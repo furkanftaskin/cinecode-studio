@@ -306,6 +306,21 @@ function fitPlan(p, s) {
 
 // ---------- production brief ----------
 const RESULT_DIR = '00 Sonuç';
+// Saver mode (Tasarruf modu): caps on drafts and independent-viewer rounds, one search per sound, optional stop at the draft.
+const clampInt = (v, lo, hi, d) => { const n = Number.isInteger(+v) ? +v : d; return Math.min(hi, Math.max(lo, n)); };
+function saverRules(s, { note = false } = {}) {
+  if (!s || s.saver !== true) return ''; // only films started with the switch on; older films keep their old rules
+  const drafts = clampInt(s.maxDrafts, 1, 3, 2), rounds = clampInt(s.viewerRounds, 0, 2, 1);
+  const viewer = rounds === 0
+    ? 'Bağımsız izleyiciyi (templates/quick/REVIEWER.md) hiç çalıştırma; make.py final raporu beklerse --force ile çıkar (kullanıcı izleyicisiz çalışmayı seçti).'
+    : `Bağımsız izleyiciyi (templates/quick/REVIEWER.md) ${note ? 'bu not turunda en fazla 1 kez' : `bu filmde toplam en fazla ${rounds} kez`} çalıştır. Sınıra gelince yeni izleyici turu başlatma; kalan kırmızı maddeleri kullanıcıya birer satırla (saniye, ne, neden) söyle ve final gerekiyorsa make.py final --force ile çıkar (kullanıcı tur sınırını bilerek seçti).`;
+  return `Tasarruf modu (kullanıcının seçimi, bağlayıcı):
+- ${note ? 'Bu not için tek bir yeni sürüm (make.py draft ya da gerekiyorsa final) çıkar; kendi kontrolün için ek taslak çıkarma.' : `En fazla ${drafts} taslak (make.py draft) çıkar; final buna dahil değil. make.py'nin kendi kapıları bir düzeltme isterse onu yap, ama o da bu sayıya girer. Sınıra gelince yeni taslak çıkarma: kalan küçük kusurları kullanıcıya birer satırla söyle.`}
+- ${viewer}
+- Müzik ve ses: her ihtiyaç için tek arama; ilk uygun kaydı kullan. Yedek aday için ikinci arama yapma, kullanmayacağın dosyayı indirme.
+- Gözle fark edilmeyecek ince ayarlar için yeni render çıkarma.`;
+}
+
 const RENDER_RULES = `Verimli render kuralları (Cinecode Studio):
 - Yalnız sesi değiştiren her düzeltmede (seviye, efekt, müzik, anlatım) görüntüyü yeniden render etme: make.py draft --sound-only ya da make.py final --sound-only kullan; video kopyalanır, yalnız ses yeniden kurulur. Kendi kontrol turlarında da böyle.
 - Yalnız altyazı değişiyorsa yalnız .srt'yi ve altyazı katmanını yenile; görüntüyü baştan render etme.
@@ -387,6 +402,7 @@ ${planText(job.plan)}
 - Görsel ya da video gösterirken tam dosya yolunu kendi satırına yaz; uygulama onu ekranda gösterir.
 - Kısa ilerleme notları yaz (Türkçe, tek satır): şu an ne yapıyorsun, ne kadar sürer.
 - ${deliver}
+${saverRules(s)}
 - Son mesajda: üretilen MP4'ün tam yolu, süresi, senin seçtiklerin (3-5 madde) ve kullanıcının dinlemesi gereken saniyeler.`;
 }
 
@@ -727,9 +743,20 @@ const server = http.createServer(async (req, res) => {
         const fresh = !job.sessionId;
         if (fresh && !(job.filmDir && fs.existsSync(path.join(job.filmDir, 'STATE.md')))) return send(res, 409, { error: 'Bu filmin oturumu yok; yeni film başlat.' });
         const { text, kind } = JSON.parse(await readBody(req));
+        // Duplicate guard: the same note (or a second "final") while the film has not changed since is refused.
+        const newestNow = outputs(job).videos[0]?.path || '';
+        const key = kind === 'final' ? 'final' : kind === 'resume' ? '' : 'note:' + String(text || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr');
+        if (key && job.lastNoteKey === key && (job.lastNoteVideo || '') === newestNow)
+          return send(res, 409, { error: kind === 'final' ? 'Final zaten istendi; film değişmedi.' : 'Bu not zaten gönderildi ve film o nota göre hazırlandı. Yeni bir şey istiyorsan farklı bir not yaz.' });
+        if (key) { job.lastNoteKey = key; job.lastNoteVideo = newestNow; }
+        const draftMode = job.settings?.deliver === 'draft' && !outputs(job).videos.some(v => v.kind === 'final');
+        const deliverNote = draftMode
+          ? 'yeni sürümü yarım boy taslak olarak teslim et (make.py draft); finali kullanıcı "Finali çıkar" ile isteyecek.'
+          : 'yeni sürümü tam boy final olarak (-14 LUFS master) teslim et.';
+        const saverNote = saverRules(job.settings, { note: true });
         const prompt = kind === 'final' ? 'Taslağı onaylıyorum. Tam boy finali çıkar, kontrollerini yap ve teslim et; son mesajda MP4 yolunu yaz.'
           : kind === 'resume' ? 'STATE.md\'den devam et. cinecode skill\'ini yeniden yükle ve kaldığın yerden sürdür.'
-          : `Kullanıcının notu:\n${text}\n\nNotu STATE.md'deki not turuna aynen kaydet, uygula, kendi kontrollerini geçir ve yeni sürümü tam boy final olarak (-14 LUFS master) teslim et.\n\n${RENDER_RULES}`;
+          : `Kullanıcının notu:\n${text}\n\nNotu STATE.md'deki not turuna aynen kaydet, uygula, kendi kontrollerini geçir ve ${deliverNote}\n\n${RENDER_RULES}${saverNote ? '\n\n' + saverNote : ''}`;
         emit(job, { kind: 'user', text: kind === 'final' ? 'Finali çıkar' : kind === 'resume' ? 'Kaldığı yerden devam' : text });
         startTurn(job, fresh ? `/cinecode\n\nProje klasörü: ${job.filmDir}\nBu klasörde cinecode ile yapılmış bir film var. Önce cinecode skill'ini yükle, klasöre geç ve STATE.md'yi oku; film oradan devam eder.\n\n${prompt}` : prompt, { resume: !fresh });
         return send(res, 200, publicJob(job));
