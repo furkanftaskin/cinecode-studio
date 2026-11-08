@@ -42,15 +42,16 @@ Then open **Cinecode Studio** from the Desktop.
 | Area | What you get |
 |---|---|
 | New project | Idea, or your own script (pasted or from a .txt/.md file, with a read-time estimate and "fit length to script"); reference images, a reference folder, a reference video, your own music |
-| Picture | Aspect 16:9, 9:16, 1:1, 4:5; 720p, 1080p, 4K; 24, 30, 60 fps; length from 5 s to 30 min |
-| Sound | Narration with Gemini, ElevenLabs or a local offline voice; voice gender and tone; ElevenLabs voice ID; open-licence music, music written in code, or your file; captions |
-| Questions | 3 to 5 questions written for your idea, with the recommended answer preselected |
-| Script | Before anything renders: title, logline, look and a timed scene list (shot, narration, sound) on a cut timeline. Edit any line, delete a scene, or give a note and have it rewritten. The approved script is binding for the production |
-| Production | Live steps read from the film's STATE.md, activity log, stills, drafts and final in one player |
-| Revise | The production delivers the final; notes go back to the same session and come back as a new final |
+| Picture | Aspect 16:9, 9:16, 1:1, 4:5; 720p, 1080p, 4K; 24, 30, 60 fps; length from 5 s to 30 min (typed, slider, or picked up from the idea text) |
+| App promo | App name, one line on what it does, closing call to action, and a tray of real screenshots and screen recordings (multi-select or drag and drop) that become the hero of the promo |
+| Sound | Narrator and dialogue as separate switches (on together or alone; cinecode casts the characters from the script, one voice each) with Gemini, ElevenLabs or a local offline voice; effects and ambience from open-licence recordings; open-licence music, music written in code, or your file; captions |
+| Questions | 3 to 5 questions written for your idea, with the recommended answer preselected; can be switched off |
+| Script | Before anything renders: title, logline, look and a timed scene list (shot, narration, sound) on a cut timeline. Every scene shows whether its words fit its seconds; nudge a scene's length, delete it, or have the script rewritten or fitted. The approved script is binding for the production |
+| Production | Live steps read from the film's STATE.md, activity log, stills and the delivered video in one player (intermediate renders folded away); stop, resume, or copy the settings into a new run |
+| Revise | The production delivers the final; notes go back to the same session and come back as a new final. Sound-only fixes rebuild only the sound, not the picture |
 | Edit | HyperFrames edits on any version: captions, title card, lower thirds, logo, end card, transitions, music, sound effects, colour, vertical reframe. Rendered locally |
-| Clone | Pick a video and HyperFrames' reverse-any-video rebuilds it as an editable HyperFrames project, optionally with your changes (text, logo, colours). Needs HyperFrames Pro; paid re-shoots and cloud render stay off; renders locally |
-| Library | Every project with its poster, status and versions. A bundled example ("Kâğıt Gemi", a 15 s draft cinecode made in 17 minutes) shows a finished run on first launch; hide it in Settings |
+| Clone | Pick a video and HyperFrames' reverse-any-video rebuilds it as an editable project: the same video with your changes, or a new video on your topic in the same cut, rhythm and type style. Needs HyperFrames Pro; paid re-shoots and cloud render stay off; renders locally |
+| Library | Every project with its poster, status and versions. A bundled example ("Kâğıt Gemi", a 15 s draft cinecode made in 17 minutes) shows a finished run on first launch; copy it to revise it yourself, or hide it in Settings |
 | Settings | API keys stored in cinecode's local key store (never shown again), output folder, tool check, credits |
 
 ## How it works
@@ -59,6 +60,7 @@ Then open **Cinecode Studio** from the Desktop.
 - Questions come from `claude -p --json-schema` (Sonnet). A production is `claude -p` running the cinecode skill with your brief, streaming its progress to the panel; notes and finals resume the same session.
 - Edits are a separate `claude -p` session running the HyperFrames skill on the video you picked. Renders are local; the brief forbids cloud render and paid generation.
 - Productions run with `--permission-mode bypassPermissions` inside the output folder, so they can work unattended. Read the cinecode and HyperFrames docs if you want to know what they run.
+- Every film folder gets a `00 Sonuç` folder holding only the deliverables (final MP4s, subtitles, licence list) as hard links, so the result is easy to find among the working files.
 - Keys are written with cinecode's `keys.py` to `~/.cinecode/keys.env` (mode 600). Films are saved to `~/Desktop/Cinecode Films` unless you choose another folder.
 - Nothing leaves your machine except what Claude Code, cinecode and HyperFrames themselves send (model calls, stock and TTS APIs you connect, HyperFrames' usage telemetry).
 
