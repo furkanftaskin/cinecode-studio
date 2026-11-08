@@ -483,8 +483,8 @@ const KEYS = [
   ['PIXABAY_API_KEY', 'Pixabay', 'Stok fotoğraf ve video. Ücretsiz anahtar: pixabay.com/api/docs'],
 ];
 const DURS = [[15, '15 sn'], [30, '30 sn'], [60, '1 dk'], [180, '3 dk'], [480, '8 dk']];
-const defaults = { mode: 'quick', purpose: 'cinematic', seconds: 30, aspect: '16:9', res: 1080, fps: 30, lang: 'tr', voice: 'none', voiceGender: 'auto', voiceTone: '', voiceId: '', music: 'open', captions: false, sfx: true, lastVoice: 'gemini', deliver: 'final', scriptMode: 'ai', askFirst: true, cloneMode: 'same', appName: '', appWhat: '', appCta: '' };
-let S = { view: 'new', settings: { ...defaults, ...LS.get('cs.settings', {}), deliver: 'final' }, idea: LS.get('cs.idea', ''), script: LS.get('cs.script', ''), notes: '',
+const defaults = { mode: 'quick', purpose: 'cinematic', seconds: 30, aspect: '16:9', res: 1080, fps: 30, lang: 'tr', voice: 'none', voiceGender: 'auto', voiceTone: '', voiceId: '', music: 'open', captions: false, sfx: true, lastVoice: 'gemini', deliver: 'final', scriptMode: 'ai', askFirst: true, cloneMode: 'same', appName: '', appWhat: '', appCta: '', saver: true, maxDrafts: 2, viewerRounds: 1 };
+let S = { view: 'new', settings: { ...defaults, ...LS.get('cs.settings', {}) }, idea: LS.get('cs.idea', ''), script: LS.get('cs.script', ''), notes: '',
   refVideo: null, refFolder: null, refImages: [], appVideos: [], musicFile: null, q: null, answers: {}, own: {},
   job: null, events: [], out: { videos: [], stills: [], state: {} }, pick: null, dockMode: 'revise', ops: [], status: null, jobs: [], est: null };
 let es = null, clock = null;
@@ -692,6 +692,14 @@ function renderNew() {
       ${item('Kare hızı', seg('fps', [[24, '24'], [30, '30'], [60, '60']]))}
       ${item('Dil', seg('lang', [['tr', 'Türkçe'], ['en', 'English']]))}
       ${item('Altyazı', sw('captions'), 'Konuşma ve yazılar ekranda')}
+    </div>
+
+    <div class="sec-h"><h3>Tasarruf modu</h3><small>Süreyi ve Claude kullanımını azaltır</small></div>
+    <div class="group">
+      ${item('Tasarruf modu', sw('saver'), s.saver ? 'Taslak ve izleyici turu sınırlı; yedek müzik ve ses araması yapılmaz' : 'Kapalı: cinecode kendi kurallarıyla, sınırsız düzeltir')}
+      ${s.saver ? item('En fazla taslak', seg('maxDrafts', [[1, '1'], [2, '2'], [3, '3']]), 'Final buna dahil değil') : ''}
+      ${s.saver ? item('Bağımsız izleyici turu', seg('viewerRounds', [[0, 'Yok'], [1, '1'], [2, '2']]), 'Taslağa ayrı bir gözle bakan yardımcı; her tur ek kullanım demek') : ''}
+      ${item('Teslim', seg('deliver', [['final', 'Finale kadar git'], ['draft', 'Taslakta dur']]), s.deliver === 'draft' ? 'Taslak gelince finali sen istersin: "Finali çıkar" düğmesi' : 'Taslaktan sonra tam boy final kendiliğinden çıkar')}
     </div>
 
     </div>
@@ -1144,6 +1152,7 @@ function renderDock() {
     </div>
     ${edit && !running ? `<div class="ops">${OPS.map(([k, l]) => `<button class="chip ${S.ops.includes(k) ? 'on' : ''}" data-op="${k}" aria-pressed="${S.ops.includes(k)}">${l}</button>`).join('')}</div>` : ''}
     <div class="dock-row"><textarea id="reply" rows="1" ${running ? 'disabled' : ''} aria-label="Not" placeholder="${running ? 'Üretim bitince not yazabilirsin' : edit ? 'Ne değişsin? Örnek: başlık beyaz ve büyük olsun, altyazı alt kenara' : 'Revize notu ya da sorulana cevabın'}"></textarea>
+      ${canFinal && !edit ? `<button class="btn lg" id="final" title="Taslağı onayla, tam boy finali çıkar">Finali çıkar</button>` : ''}
       <button class="btn lg primary" id="send" ${running ? 'disabled' : ''}>${edit ? 'Düzenle' : 'Gönder'}</button></div>
   </div></div>`;
   $$('[data-mode]').forEach(b => b.onclick = () => { if (b.disabled) return; S.dockMode = b.dataset.mode; renderDock(); });
@@ -1151,17 +1160,23 @@ function renderDock() {
   const ta = $('#reply');
   ta.oninput = () => { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; };
   ta.onkeydown = e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) $('#send')?.click(); };
-  if ($('#final')) $('#final').onclick = () => post('reply', { kind: 'final' });
-  $('#send').onclick = async () => {
-    if (running) return;
+  // One click, one request: buttons stay locked until the server answers, so a note never goes twice.
+  const once = async (btn, fn) => { if (btn.disabled) return; btn.disabled = true; const ok = await fn(); if (!ok && document.body.contains(btn)) btn.disabled = false; };
+  if ($('#final')) $('#final').onclick = () => once($('#final'), () => post('reply', { kind: 'final' }));
+  $('#send').onclick = () => once($('#send'), async () => {
+    if (running) return false;
     const text = ta.value.trim();
     if (edit) {
-      if (!text && !S.ops.length) return ta.focus();
+      if (!text && !S.ops.length) { ta.focus(); return false; }
       let logo = null;
-      if (S.ops.includes('logo')) { const r = await pickPath('image'); if (!r) return toast('Logo dosyası seçilmedi'); logo = r.path; }
-      if (await post('edit', { text, ops: S.ops, source: cur?.path, logo })) S.ops = [];
-    } else { if (!text) return ta.focus(); post('reply', { text }); }
-  };
+      if (S.ops.includes('logo')) { const r = await pickPath('image'); if (!r) { toast('Logo dosyası seçilmedi'); return false; } logo = r.path; }
+      if (await post('edit', { text, ops: S.ops, source: cur?.path, logo })) { S.ops = []; return true; }
+      return false;
+    }
+    if (!text) { ta.focus(); return false; }
+    if (await post('reply', { text })) { ta.value = ''; return true; }
+    return false;
+  });
 }
 async function post(act, body) { try { await api(`/api/jobs/${S.job.id}/${act}`, body); return true; } catch (e) { toast(e.message); return false; } }
 
