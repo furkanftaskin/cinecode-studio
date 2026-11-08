@@ -1,0 +1,12 @@
+#!/bin/zsh
+# Starts the Cinecode Studio server in the background (leaves a running one alone) and opens the app.
+# --serve: only start the server (the Mac app calls this).
+DIR="${0:A:h:h}"
+PORT=4910
+mkdir -p "$DIR/data"
+if ! lsof -nP -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1; then
+  nohup /usr/bin/perl -MPOSIX -e "POSIX::setsid(); exec @ARGV" node "$DIR/server.mjs" >>"$DIR/data/server.log" 2>&1 &
+  for i in {1..50}; do lsof -nP -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1 && break; sleep 0.1; done
+fi
+[ "$1" = "--serve" ] && exit 0
+if [ "$(uname)" = Darwin ]; then open "/Applications/Cinecode Studio.app" 2>/dev/null || open "http://localhost:$PORT"; else xdg-open "http://localhost:$PORT"; fi

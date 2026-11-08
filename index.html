@@ -1,0 +1,1242 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Cinecode Studio</title>
+<style>
+:root {
+  --bg: #050505;
+  --glass: rgba(255,255,255,.045); --glass-2: rgba(255,255,255,.075); --glass-3: rgba(255,255,255,.12);
+  --stroke: rgba(255,255,255,.085); --stroke-2: rgba(255,255,255,.16);
+  --hi: inset 0 1px 0 rgba(255,255,255,.07);
+  --label: #f5f5f5; --label-2: rgba(235,235,235,.6); --label-3: rgba(235,235,235,.34);
+  --neon: #3dff7a; --neon-ink: #04140a; --blue: #3dff7a; --violet: #3dff7a; --teal: #3dff7a;
+  --grad: #3dff7a;
+  --blue-soft: rgba(61,255,122,.1);
+  --green: #3dff7a; --orange: #ffb35c; --red: #ff6b6b;
+  --field: rgba(255,255,255,.06); --hover: rgba(255,255,255,.05); --sep: rgba(255,255,255,.07);
+  --group: var(--glass); --card-shadow: 0 0 0 1px var(--stroke), var(--hi);
+  --blur: blur(28px) saturate(160%);
+  --r: 18px; --pad: 40px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--label); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; letter-spacing: -.005em; }
+button, input, textarea, select { font: inherit; color: inherit; letter-spacing: inherit; }
+button { cursor: pointer; border: 0; background: none; padding: 0; }
+button:disabled { cursor: default; }
+::selection { background: rgba(61,255,122,.35); }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 8px; }
+svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; } ::-webkit-scrollbar-track { background: transparent; }
+
+/* ambient light: three slow blobs behind the glass */
+.aurora { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.aurora i { position: absolute; border-radius: 50%; animation: drift 38s ease-in-out infinite alternate; will-change: transform; }
+.aurora i:nth-child(1) { width: 90vw; height: 90vw; left: -30vw; top: -50vw; background: radial-gradient(closest-side, rgba(255,255,255,.075), transparent); }
+.aurora i:nth-child(2) { width: 60vw; height: 60vw; right: -24vw; top: 10vh; background: radial-gradient(closest-side, rgba(255,255,255,.04), transparent); animation-duration: 46s; }
+.aurora i:nth-child(3) { width: 70vw; height: 70vw; left: 20vw; bottom: -50vw; background: radial-gradient(closest-side, rgba(61,255,122,.0), transparent); transition: background 1s; animation-duration: 52s; }
+body.busy .aurora i:nth-child(3) { background: radial-gradient(closest-side, rgba(61,255,122,.09), transparent); }
+.aurora::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 120%, transparent, rgba(6,7,11,.55) 70%); }
+body.busy .aurora i { animation-duration: 14s; }
+@keyframes drift { 0% { transform: translate(0,0) scale(1); } 50% { transform: translate(6vw,4vh) scale(1.12); } 100% { transform: translate(-4vw,8vh) scale(.94); } }
+
+.app { position: relative; z-index: 1; display: grid; grid-template-columns: 252px minmax(0, 1fr); height: 100vh; padding: 12px 0 12px 12px; gap: 0; }
+
+/* sidebar: floating glass rail */
+.side { background: rgba(18,18,18,.5); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--stroke); box-shadow: var(--hi), 0 30px 60px rgba(0,0,0,.35); border-radius: 22px; display: flex; flex-direction: column; min-height: 0; padding: 40px 10px 10px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 18px; font-weight: 650; font-size: 15px; letter-spacing: -.01em; }
+.brand i { width: 26px; height: 26px; border-radius: 8px; background: #fff; display: grid; place-items: center; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+.brand i::after { content: ""; width: 0; height: 0; border-left: 8px solid #000; border-top: 5px solid transparent; border-bottom: 5px solid transparent; margin-left: 2px; }
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.row-btn { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border-radius: 11px; text-align: left; white-space: nowrap; overflow: hidden; color: var(--label-2); font-weight: 500; transition: background .15s, color .15s; }
+.row-btn:hover { background: var(--hover); color: var(--label); }
+.row-btn.on { background: var(--glass-3); color: var(--label); }
+.row-btn.on svg { color: var(--blue); }
+.row-btn .count { margin-left: auto; color: var(--label-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.side h3 { font-size: 12px; font-weight: 600; color: var(--label-3); padding: 22px 10px 8px; }
+.films { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 2px; min-height: 0; }
+.film { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 0 10px; align-items: center; padding: 7px 8px; border-radius: 12px; text-align: left; }
+.film:hover { background: var(--hover); }
+.film.on { background: var(--glass-2); }
+.thumb { width: 44px; height: 30px; border-radius: 7px; background: rgba(0,0,0,.5); overflow: hidden; display: grid; place-items: center; grid-row: span 2; color: var(--label-3); box-shadow: 0 0 0 1px var(--stroke); }
+.thumb video, .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.film b { font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.film small { color: var(--label-2); font-size: 11.5px; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--label-3); flex: none; }
+.dot.running { background: var(--blue); box-shadow: 0 0 10px var(--blue); animation: pulse 1.6s ease-in-out infinite; }
+.dot.waiting { background: var(--green); } .dot.error { background: var(--red); } .dot.stopped { background: var(--orange); }
+@keyframes pulse { 50% { opacity: .35; } }
+.empty-side { color: var(--label-3); font-size: 12.5px; padding: 4px 10px; }
+
+/* main */
+.main { display: grid; grid-template-rows: 40px minmax(0, 1fr) auto; min-height: 0; }
+.toolbar { display: flex; align-items: center; gap: 10px; padding: 0 28px; -webkit-app-region: drag; }
+.toolbar h1 { font-size: 15px; font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toolbar .acts { display: flex; gap: 8px; align-items: center; -webkit-app-region: no-drag; }
+.body { overflow: auto; min-height: 0; scrollbar-gutter: stable both-edges; }
+.page { max-width: 880px; margin: 0 auto; padding: 8px var(--pad) 48px; }
+.page.wide { max-width: 1180px; }
+.head-row { display: flex; align-items: center; gap: 12px; margin: 6px 0 22px; }
+.large { font-size: 34px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; flex: 1; margin-bottom: 20px; }
+.head-row .large { margin-bottom: 0; }
+.sub { color: var(--label-2); margin: -8px 0 22px; font-size: 15px; }
+.foot { padding: 12px 12px 0; }
+.foot-in { display: flex; align-items: center; gap: 10px; max-width: 800px; margin: 0 auto; padding: 12px 14px 12px 20px; min-height: 64px; background: rgba(18,18,18,.6); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--stroke); border-radius: 20px; box-shadow: var(--hi), 0 20px 50px rgba(0,0,0,.4); }
+.foot-in.full { max-width: none; margin: 0 12px 0 0; }
+.foot:empty { display: none; }
+.foot-in .meta { flex: 1; color: var(--label-2); font-size: 13px; min-width: 0; }
+.foot-in .meta b { color: var(--label); font-weight: 600; }
+.example-bar { display: flex; align-items: center; gap: 14px; width: 100%; }
+.example-bar > span { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: var(--neon); color: var(--neon-ink); flex: none; box-shadow: 0 8px 20px rgba(0,0,0,.45); }
+.example-bar p { flex: 1; margin: 0; color: var(--label-2); font-size: 13.5px; line-height: 1.45; min-width: 0; }
+
+.btn { height: 34px; padding: 0 16px; border-radius: 11px; font-weight: 550; background: var(--glass-2); border: 1px solid var(--stroke); box-shadow: var(--hi); white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 7px; transition: background .15s, transform .1s; }
+.btn:hover { background: var(--glass-3); }
+.btn:active { transform: scale(.98); }
+.btn.primary { background: var(--neon); border-color: transparent; color: var(--neon-ink); box-shadow: 0 8px 24px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.25); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.plain { background: transparent; border: 0; box-shadow: none; color: var(--blue); padding: 0; height: auto; }
+.btn.danger { color: var(--red); background: transparent; border-color: transparent; box-shadow: none; padding: 0 8px; }
+.btn.lg { height: 42px; padding: 0 22px; border-radius: 13px; font-size: 14.5px; }
+.btn.sm { height: 28px; padding: 0 11px; border-radius: 9px; font-size: 12.5px; }
+.btn:disabled { opacity: .4; transform: none; }
+
+/* grouped glass lists */
+.section-title { font-size: 13px; font-weight: 600; color: var(--label-2); margin: 28px 0 10px 4px; }
+.sec-h { display: flex; align-items: baseline; gap: 12px; margin: 38px 4px 14px; }
+.sec-h h3 { font-size: 19px; font-weight: 650; letter-spacing: -.015em; }
+.sec-h small { color: var(--label-2); font-size: 13px; }
+.sec-h.sub2 { margin-top: 18px; margin-bottom: 10px; }
+.group { background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-radius: var(--r); border: 1px solid var(--stroke); box-shadow: var(--hi); overflow: hidden; }
+.group.mt { margin-top: 12px; }
+.item { display: flex; align-items: center; gap: 14px; min-height: 54px; padding: 9px 18px; position: relative; width: 100%; text-align: left; }
+.item + .item::before { content: ""; position: absolute; top: 0; left: 18px; right: 18px; border-top: 1px solid var(--sep); }
+.item > .lbl { flex: 1; min-width: 0; }
+.item > .lbl small { display: block; color: var(--label-2); font-size: 12.5px; margin-top: 1px; }
+.item .ctl { flex: none; display: flex; align-items: center; gap: 8px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; align-items: start; }
+.footnote { font-size: 12.5px; color: var(--label-2); margin: 10px 4px 0; }
+
+/* controls */
+.seg { display: inline-flex; background: rgba(0,0,0,.25); border: 1px solid var(--stroke); border-radius: 11px; padding: 3px; gap: 2px; }
+.seg button { height: 28px; min-width: 48px; padding: 0 12px; border-radius: 8px; font-size: 13px; color: var(--label-2); white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background .15s, color .15s; }
+.seg button:hover { color: var(--label); }
+.seg button.on { background: var(--glass-3); color: var(--label); box-shadow: var(--hi), 0 2px 8px rgba(0,0,0,.25); font-weight: 550; }
+.seg button:disabled { opacity: .4; }
+.ratio { display: inline-block; border: 1.5px solid currentColor; border-radius: 2px; opacity: .7; }
+.pop { position: relative; display: inline-block; }
+.pop select { height: 34px; border: 1px solid var(--stroke); border-radius: 10px; background: rgba(0,0,0,.25); padding: 0 30px 0 12px; appearance: none; font-size: 13px; width: 200px; }
+.pop select option { background: #1a1a1a; }
+.pop::after { content: ""; position: absolute; right: 12px; top: 12px; width: 6px; height: 6px; border-right: 1.5px solid var(--label-2); border-bottom: 1.5px solid var(--label-2); transform: rotate(45deg); pointer-events: none; }
+.num { width: 64px; height: 32px; border: 1px solid var(--stroke); border-radius: 9px; background: rgba(0,0,0,.25); text-align: center; font-variant-numeric: tabular-nums; }
+.switch { width: 44px; height: 26px; border-radius: 13px; background: rgba(255,255,255,.14); position: relative; transition: background .2s; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.35); transition: transform .2s; }
+.switch.on { background: var(--neon); }
+.switch.on::after { background: var(--neon-ink); }
+.switch.on::after { transform: translateX(18px); }
+.field { width: 100%; height: 34px; border: 1px solid var(--stroke); border-radius: 10px; background: rgba(0,0,0,.25); padding: 0 12px; outline: 0; }
+.field:focus { border-color: rgba(255,255,255,.6); }
+.field.bare { background: transparent; border: 0; padding: 0; height: 32px; }
+.field::placeholder, textarea::placeholder, input::placeholder { color: var(--label-3); }
+
+/* flow steps */
+.flow { list-style: none; padding: 0; display: flex; gap: 6px; margin: 4px 0 26px; }
+.flow li { display: flex; align-items: center; gap: 6px; color: var(--label-3); font-size: 13px; font-weight: 550; }
+.flow li + li::before { content: ""; width: 22px; height: 1px; background: var(--stroke-2); margin-right: 2px; }
+.flow button { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px 0 4px; border-radius: 15px; color: inherit; }
+.flow button:not(:disabled):hover { background: var(--hover); color: var(--label); }
+.flow span { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; border: 1px solid var(--stroke-2); font-variant-numeric: tabular-nums; }
+.flow span svg { width: 12px; height: 12px; stroke-width: 3; }
+.flow li.done { color: var(--label-2); } .flow li.done span { background: rgba(61,255,122,.16); border-color: transparent; color: var(--green); }
+.flow li.now { color: var(--label); } .flow li.now span { background: var(--neon); border-color: transparent; color: var(--neon-ink); box-shadow: 0 4px 14px rgba(0,0,0,.45); }
+
+/* composer: the hero */
+.composer { position: relative; background: rgba(20,20,20,.6); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-radius: 24px; border: 1px solid var(--stroke-2); box-shadow: var(--hi), 0 30px 80px rgba(0,0,0,.45); padding: 8px 22px 16px; }
+.composer::before { content: ""; position: absolute; inset: -1px; border-radius: 25px; padding: 1px; background: conic-gradient(from var(--ang, 0deg), transparent 0 60%, rgba(255,255,255,.9) 75%, rgba(255,255,255,.9) 85%, transparent 95%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0; transition: opacity .4s; pointer-events: none; animation: spinb 5s linear infinite; }
+.composer:focus-within::before { opacity: 1; }
+@property --ang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes spinb { to { --ang: 360deg; } }
+.comp-tabs { display: flex; gap: 4px; padding: 6px 0 4px; margin: 0 -10px; }
+.comp-tabs button { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 10px; color: var(--label-2); font-weight: 550; font-size: 13px; }
+.comp-tabs button:hover { color: var(--label); background: var(--hover); }
+.comp-tabs button.on { color: var(--label); background: var(--glass-2); box-shadow: var(--hi); }
+.comp-tabs button.on svg { color: var(--blue); }
+.composer textarea { width: 100%; min-height: 132px; border: 0; outline: 0; background: transparent; resize: none; font-size: 20px; line-height: 1.5; letter-spacing: -.01em; display: block; padding-top: 8px; }
+.composer .idea-line { width: 100%; height: 44px; border: 0; outline: 0; background: transparent; font-size: 17px; font-weight: 550; border-bottom: 1px solid var(--sep); }
+.composer textarea.script-ta { min-height: 200px; font-size: 16px; line-height: 1.65; resize: vertical; }
+.script-bar { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--label-2); padding: 6px 0 2px; }
+.dur-hint { display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; padding: 10px 12px 10px 14px; border-radius: 12px; background: rgba(255,179,92,.08); border: 1px solid rgba(255,179,92,.25); color: #ffd6a8; font-size: 13px; }
+.dur-hint[hidden] { display: none; }
+.dur-hint span { flex: 1; }
+.dur-hint svg { width: 16px; height: 16px; flex: none; }
+.attach { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 14px; border-top: 1px solid var(--sep); margin-top: 8px; }
+.chip { height: 32px; padding: 0 13px; border-radius: 16px; background: var(--glass-2); border: 1px solid var(--stroke); display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--label-2); max-width: 100%; transition: background .15s, color .15s; }
+.chip:hover { color: var(--label); background: var(--glass-3); }
+.chip.set, .chip.on { background: var(--blue-soft); border-color: rgba(255,255,255,.35); color: #fff; }
+.chip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.chip .x { opacity: .7; margin-right: -6px; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; }
+.chip .x:hover { opacity: 1; background: rgba(255,255,255,.12); }
+.warn-line { color: var(--orange); }
+
+/* choice tiles */
+.tiles { display: grid; gap: 12px; }
+.tiles.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.tiles.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tile { position: relative; text-align: left; display: flex; flex-direction: column; gap: 3px; padding: 16px; min-height: 112px; border-radius: 18px; background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--stroke); box-shadow: var(--hi); transition: background .2s, border-color .2s, box-shadow .2s, transform .15s; }
+.tiles.two .tile { min-height: 88px; }
+.tile:hover { background: var(--glass-2); transform: translateY(-1px); }
+.tile b { font-size: 15px; font-weight: 600; margin-top: auto; }
+.tile small { color: var(--label-2); font-size: 12.5px; line-height: 1.35; }
+.tile.on { background: rgba(255,255,255,.07); border-color: var(--neon); box-shadow: var(--hi), 0 0 0 1px rgba(255,255,255,.35), 0 12px 36px rgba(0,0,0,.45); }
+.tile .frame { width: 40px; height: 40px; display: grid; place-items: center; margin-bottom: 10px; }
+.tile .frame i { display: block; border: 1.6px solid var(--label-2); border-radius: 4px; }
+.tile.on .frame i { border-color: transparent; background: var(--grad); box-shadow: 0 4px 14px rgba(0,0,0,.45); }
+.tile-ic { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: rgba(255,255,255,.07); color: var(--label-2); margin-bottom: 10px; }
+.tiles.two .tile-ic { margin-bottom: 6px; }
+.tile.on .tile-ic { background: var(--neon); color: var(--neon-ink); box-shadow: 0 4px 14px rgba(0,0,0,.45); }
+.tile-ok { position: absolute; top: 14px; right: 14px; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+/* length */
+.len { background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--stroke); box-shadow: var(--hi); border-radius: 18px; padding: 18px 20px 14px; }
+.len-top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.len output { font-size: 30px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; min-width: 120px; color: #fff; }
+.len input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; margin-top: 10px; }
+.len input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--neon) calc(11px + (100% - 22px) * var(--p, .4)), rgba(255,255,255,.14) calc(11px + (100% - 22px) * var(--p, .4))); }
+.len input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #fff; margin-top: -8px; box-shadow: 0 0 0 4px rgba(255,255,255,.35), 0 4px 12px rgba(0,0,0,.4); }
+.len-scale { position: relative; height: 26px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.len-scale button { position: absolute; top: 2px; left: calc(11px + (100% - 22px) * var(--p)); transform: translateX(-50%); white-space: nowrap; height: 24px; padding: 0 8px; border-radius: 12px; color: var(--label-3); }
+.len-scale button::before { content: ""; position: absolute; left: 50%; top: -9px; width: 1px; height: 6px; background: rgba(255,255,255,.22); }
+.len-scale button:hover { color: var(--label); }
+.len-scale button.on { color: var(--neon); }
+.len-mode { margin-left: auto; color: var(--label-2); font-size: 13px; }
+.tray { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 14px; padding: 16px; border-radius: 18px; background: var(--glass); border: 1px solid var(--stroke); transition: border-color .15s, background .15s; }
+.tray.drag { border-color: var(--neon); background: rgba(61,255,122,.05); }
+.ti { position: relative; margin: 0; min-width: 0; }
+.ti-media { position: relative; display: grid; place-items: center; aspect-ratio: 9 / 16; border-radius: 14px; overflow: hidden; background: rgba(0,0,0,.35); border: 1px solid var(--stroke); }
+.ti-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ti figcaption { margin-top: 7px; font-size: 12px; color: var(--label-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ti-badge { position: absolute; left: 8px; bottom: 8px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: rgba(0,0,0,.6); color: #fff; }
+.ti-badge svg { width: 12px; height: 12px; }
+.ti-x { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: rgba(0,0,0,.65); color: #fff; opacity: 0; transition: opacity .15s; }
+.ti-x svg { width: 13px; height: 13px; }
+.ti:hover .ti-x, .ti-x:focus-visible { opacity: 1; }
+.ti.add { text-align: center; }
+.ti.add .ti-media { border: 1.5px dashed rgba(255,255,255,.2); background: transparent; align-content: center; gap: 6px; padding: 10px; color: var(--label-2); transition: border-color .15s, color .15s; }
+.ti.add:hover .ti-media { border-color: var(--neon); color: var(--neon); }
+.ti.add .ti-media svg { width: 22px; height: 22px; }
+.ti.add b { font-size: 13.5px; color: var(--label); font-weight: 600; }
+.ti.add small { font-size: 11.5px; line-height: 1.35; }
+.tray-count { margin-left: auto; color: var(--label-2); }
+.note-line { margin: 10px 2px 0; color: var(--label-2); font-size: 13px; line-height: 1.5; }
+.warn-line { margin: 12px 2px 0; color: #ffb35c; font-size: 13px; }
+
+/* library */
+.lib { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 26px 20px; }
+.card { text-align: left; display: flex; flex-direction: column; gap: 10px; border-radius: var(--r); }
+.card .poster { aspect-ratio: 16 / 9; border-radius: 16px; background: rgba(0,0,0,.5); overflow: hidden; display: grid; place-items: center; color: var(--label-3); border: 1px solid var(--stroke); box-shadow: 0 16px 40px rgba(0,0,0,.4); position: relative; transition: transform .25s, box-shadow .25s; }
+.card .poster video, .card .poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.card .poster .live { position: absolute; left: 10px; top: 10px; font-size: 11.5px; font-weight: 600; color: #fff; background: rgba(0,0,0,.45); backdrop-filter: blur(12px); padding: 3px 9px; border-radius: 10px; display: flex; gap: 6px; align-items: center; }
+.card:hover .poster { transform: translateY(-3px); box-shadow: 0 0 0 1px rgba(255,255,255,.5), 0 22px 50px rgba(0,0,0,.45); }
+.card b { font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 2px; }
+.card small { color: var(--label-2); font-size: 12.5px; display: flex; align-items: center; gap: 6px; padding: 0 2px; margin-top: -6px; }
+.empty { text-align: center; padding: 90px 20px; color: var(--label-2); display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.empty svg { width: 44px; height: 44px; color: var(--label-3); stroke-width: 1.2; }
+.empty h2 { color: var(--label); font-size: 20px; font-weight: 650; }
+
+/* questions */
+.q-title { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 600; margin: 30px 4px 12px; letter-spacing: -.01em; }
+.q-n { width: 26px; height: 26px; border-radius: 9px; display: grid; place-items: center; font-size: 12.5px; background: var(--glass-2); border: 1px solid var(--stroke); color: var(--label-2); flex: none; }
+.opt { cursor: pointer; transition: background .15s; }
+.opt:hover { background: var(--hover); }
+.opt .radio { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--stroke-2); flex: none; display: grid; place-items: center; transition: all .15s; }
+.opt.on { background: rgba(255,255,255,.04); }
+.opt.on .radio { border-color: transparent; background: var(--grad); box-shadow: 0 0 12px rgba(0,0,0,.45); }
+.opt.on .radio::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--neon-ink); }
+.opt .lbl b { font-weight: 450; font-size: 14.5px; }
+.opt.on .lbl b { font-weight: 600; }
+.tag { color: var(--label-3); font-size: 12px; margin-left: 8px; font-weight: 400; }
+.tag.rec { color: var(--neon); background: rgba(255,255,255,.16); padding: 2px 8px; border-radius: 8px; font-weight: 550; }
+.loading { display: flex; align-items: center; gap: 12px; color: var(--label-2); padding: 70px 0; justify-content: center; font-size: 15px; }
+.loading::before { content: none; }
+.spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255,255,255,.1); border-top-color: var(--violet); animation: spin .9s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* script and cut */
+.plan-title { width: 100%; border: 0; outline: 0; background: transparent; font-size: 34px; font-weight: 700; letter-spacing: -.03em; line-height: 1.15; }
+.plan-log { width: 100%; border: 0; outline: 0; background: transparent; resize: none; font-size: 17px; line-height: 1.5; color: var(--label-2); margin-top: 6px; overflow: hidden; display: block; }
+.plan-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 14px 0 22px; color: var(--label-2); font-size: 13px; }
+.plan-meta > span { display: inline-flex; align-items: center; gap: 7px; }
+.plan-meta > span:last-child { flex: 1; min-width: 240px; }
+.bare-in { border: 0; outline: 0; background: transparent; width: 100%; color: inherit; font-size: inherit; padding: 0; min-width: 0; }
+.cutbar { display: flex; gap: 3px; height: 46px; padding: 4px; border-radius: 14px; background: rgba(0,0,0,.3); border: 1px solid var(--stroke); }
+.cutbar a { display: flex; align-items: flex-end; padding: 0 0 5px 7px; border-radius: 9px; color: rgba(255,255,255,.75); font-size: 11px; font-weight: 600; text-decoration: none; min-width: 0; overflow: hidden; background: rgba(255,255,255,.13); transition: background .15s, color .15s; }
+.cutbar a:nth-child(even) { background: rgba(255,255,255,.08); }
+.cutbar a:hover { background: var(--neon); color: var(--neon-ink); }
+.cut-scale { display: flex; justify-content: space-between; color: var(--label-3); font-size: 11.5px; margin: 6px 4px 24px; font-variant-numeric: tabular-nums; }
+.sheet-page { display: flex; flex-direction: column; gap: 12px; }
+.scene { background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--stroke); box-shadow: var(--hi); border-radius: 18px; padding: 16px 20px 14px; scroll-margin-top: 20px; }
+.scene header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.scene .sn { width: 26px; height: 26px; border-radius: 9px; display: grid; place-items: center; background: #fff; color: #000; font-size: 12.5px; font-weight: 650; box-shadow: 0 4px 12px rgba(0,0,0,.45); }
+.scene .tc { font-weight: 600; font-variant-numeric: tabular-nums; }
+.scene .dur { color: var(--label-2); font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; }
+.scene .dur b { font-weight: 550; min-width: 40px; text-align: center; font-variant-numeric: tabular-nums; }
+.nudge.sm { width: 24px; height: 24px; border-radius: 7px; font-size: 15px; }
+.scene .fit { flex: 1; display: flex; justify-content: flex-end; }
+.fc { font-size: 12px; padding: 3px 9px; border-radius: 8px; background: rgba(255,255,255,.06); color: var(--label-3); }
+.fc.ok { color: var(--neon); background: rgba(61,255,122,.08); }
+.fc.over { color: var(--orange); background: rgba(255,179,92,.12); }
+.plan-meta .warn { color: var(--orange); }
+.fit-bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; margin: -8px 0 16px; border-radius: 14px; background: rgba(255,179,92,.08); border: 1px solid rgba(255,179,92,.25); color: #ffd6a8; font-size: 13px; }
+.fit-bar span { flex: 1; }
+.scene .sc-x { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: var(--label-3); opacity: 0; transition: opacity .15s; }
+.scene:hover .sc-x { opacity: 1; } .scene .sc-x:hover { background: var(--hover); color: var(--red); }
+.scene textarea { width: 100%; border: 0; outline: 0; background: transparent; resize: none; overflow: hidden; display: block; line-height: 1.55; border-radius: 8px; }
+.scene textarea:focus, .scene input:focus { background: rgba(255,255,255,.04); }
+.sc-shot { font-size: 15.5px; }
+.sc-cue { margin: 12px 0 4px; font-size: 12px; font-weight: 600; color: var(--neon); }
+.sc-text { font-size: 16px; font-family: "New York", "Iowan Old Style", Georgia, serif; font-style: italic; color: #fff; padding-left: 14px !important; box-shadow: inset 2px 0 0 var(--neon); border-radius: 0 !important; }
+.sc-sound { display: flex; align-items: center; gap: 8px; color: var(--label-3); font-size: 12.5px; margin-top: 10px; }
+.sc-sound input { border-radius: 6px; }
+.note-row { gap: 10px; }
+
+/* job */
+.job { display: grid; grid-template-columns: minmax(0, 1fr) 320px; height: 100%; min-height: 0; gap: 0; }
+.stage { overflow: auto; padding: 8px 28px 28px; min-height: 0; }
+.stage-inner { max-width: 860px; margin: 0 auto; }
+.player { position: relative; background: #000; border-radius: 20px; overflow: hidden; display: grid; place-items: center; margin: 0 auto; max-height: 54vh; max-width: 100%; border: 1px solid var(--stroke); box-shadow: 0 30px 80px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.04); }
+.player video { width: 100%; height: 100%; display: block; object-fit: contain; }
+.player .ph { color: var(--label-2); font-size: 14px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 28px; }
+body.busy .player::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--neon), transparent); background-size: 50% 100%; background-repeat: no-repeat; animation: scan 2.4s ease-in-out infinite; }
+@keyframes scan { 0% { background-position: -50% 0; } 100% { background-position: 150% 0; } }
+.vtitle { display: flex; align-items: center; gap: 8px; margin: 12px 4px 0; font-size: 13px; color: var(--label-2); }
+.vtitle b { color: var(--label); font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; }
+.log h4 { font-size: 13px; color: var(--label-2); font-weight: 600; margin: 0 0 2px 4px; }
+.msg { background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--stroke); box-shadow: var(--hi); border-radius: 16px; padding: 13px 16px; overflow-wrap: anywhere; line-height: 1.55; }
+.msg.user { background: #f2f2f2; border-color: transparent; color: #0a0a0a; box-shadow: 0 8px 22px rgba(0,0,0,.45); align-self: flex-end; max-width: 80%; border-radius: 18px; padding: 9px 15px; }
+.msg.err { background: rgba(255,107,107,.1); border-color: rgba(255,107,107,.3); color: #ffb3b3; }
+.msg p + p, .msg ul { margin-top: 6px; } .msg ul { padding-left: 18px; }
+.msg code { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: rgba(255,255,255,.08); padding: 1px 5px; border-radius: 5px; }
+.msg.user code { background: rgba(255,255,255,.2); }
+.msg img, .msg video { display: block; max-width: 100%; max-height: 320px; border-radius: 10px; margin-top: 10px; background: #000; }
+.tools { display: flex; flex-direction: column; gap: 2px; padding: 0 6px; }
+.tool { font-size: 12.5px; color: var(--label-3); display: flex; min-width: 0; }
+.tool span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tools.more .tool:nth-last-child(n+5) { display: none; }
+.tools .toggle { font-size: 12.5px; color: var(--blue); text-align: left; }
+.working { display: flex; align-items: center; gap: 10px; color: var(--label-2); font-size: 13px; padding: 4px 6px; }
+
+.inspector { overflow: auto; padding: 8px 12px 24px 4px; min-height: 0; }
+.inspector .section-title { margin: 22px 0 8px 6px; }
+.inspector .section-title:first-child { margin-top: 0; }
+.steps { padding: 8px 0; }
+.step { display: flex; align-items: center; gap: 12px; height: 34px; padding: 0 16px; color: var(--label-3); }
+.step .mk { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid currentColor; display: grid; place-items: center; flex: none; }
+.step .mk svg { width: 11px; height: 11px; stroke-width: 3.2; }
+.step.done { color: var(--label); } .step.done .mk { background: rgba(61,255,122,.2); border-color: transparent; color: var(--green); }
+.step.now { color: var(--label); font-weight: 600; } .step.now .mk { border-color: transparent; background: var(--neon); box-shadow: 0 0 12px rgba(0,0,0,.45); }
+.step.now .mk::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--neon-ink); }
+.next { font-size: 12.5px; color: var(--label-2); padding: 0 16px 14px 46px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; padding: 14px 16px; font-size: 13px; }
+.kv span { color: var(--label-2); } .kv b { font-weight: 550; text-align: right; font-variant-numeric: tabular-nums; }
+.bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,.08); overflow: hidden; margin: 0 16px 14px; }
+.info-act { padding: 0 16px 16px; display: grid; gap: 8px; }
+.kv + .info-act { padding-top: 2px; }
+.info-act .btn { width: 100%; justify-content: center; }
+#stop:hover { border-color: rgba(255,107,107,.5); color: #ffb3b3; }
+.bar i { display: block; height: 100%; background: var(--grad); border-radius: 2px; transition: width .6s ease; }
+.vlist .item { min-height: 46px; cursor: pointer; }
+.vlist .item:hover { background: var(--hover); }
+.vlist .item.on { background: rgba(255,255,255,.08); }
+.vlist .mids { color: var(--label-2); }
+.vlist .mids .mids-n { margin-left: auto; margin-right: 10px; font-size: 12.5px; color: var(--label-3); }
+.vlist .mids svg { width: 14px; height: 14px; }
+.vlist .item.on .vname { color: #fff; font-weight: 600; }
+.badge { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 6px; background: rgba(255,255,255,.08); color: var(--label-2); flex: none; }
+.badge.final { background: rgba(61,255,122,.16); color: var(--green); }
+.badge.edit { background: rgba(255,255,255,.1); color: #fff; }
+.vname { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stills { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.stills img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; background: #000; cursor: zoom-in; display: block; border: 1px solid var(--stroke); }
+
+.dock { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.dock-top { display: flex; align-items: center; gap: 10px; min-height: 34px; }
+.dock-top .meta { flex: 1; color: var(--label-2); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dock-row { display: flex; gap: 8px; align-items: flex-end; }
+.dock textarea { flex: 1; min-height: 42px; max-height: 160px; border: 1px solid var(--stroke); outline: 0; border-radius: 13px; background: rgba(0,0,0,.25); padding: 10px 14px; resize: none; line-height: 20px; display: block; }
+.dock textarea:focus { border-color: rgba(255,255,255,.55); }
+.dock textarea:disabled { opacity: .55; }
+.ops { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); backdrop-filter: blur(6px); display: grid; place-items: center; z-index: 20; }
+.sheet { width: min(460px, 92vw); background: rgba(24,24,24,.86); backdrop-filter: var(--blur); border: 1px solid var(--stroke-2); border-radius: 22px; box-shadow: var(--hi), 0 30px 80px rgba(0,0,0,.5); padding: 24px; }
+.sheet h2 { font-size: 17px; font-weight: 650; margin-bottom: 6px; }
+.sheet p { color: var(--label-2); font-size: 13px; margin-bottom: 16px; }
+.sheet .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.75); backdrop-filter: blur(16px); display: grid; place-items: center; z-index: 30; }
+.lightbox img { max-width: 92vw; max-height: 90vh; border-radius: 12px; }
+.toast { position: fixed; left: 50%; bottom: 100px; transform: translateX(-50%); background: rgba(30,30,30,.92); backdrop-filter: var(--blur); border: 1px solid var(--stroke-2); color: var(--label); padding: 10px 16px; border-radius: 12px; font-size: 13px; z-index: 40; box-shadow: 0 12px 30px rgba(0,0,0,.4); }
+.ok-ic { color: var(--green); display: inline-flex; gap: 5px; align-items: center; font-size: 12.5px; } .no-ic { color: var(--label-3); font-size: 12.5px; }
+.path { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+
+.tiles.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.len-val { display: flex; align-items: center; gap: 6px; }
+.nudge { width: 32px; height: 32px; border-radius: 10px; border: 1px solid var(--stroke); background: rgba(0,0,0,.25); color: var(--label-2); font-size: 18px; line-height: 1; }
+.nudge:hover { color: var(--neon); border-color: rgba(61,255,122,.5); }
+.len-in { width: 190px; text-align: center; border: 1px solid transparent; border-radius: 10px; background: transparent; outline: 0; font-size: 30px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: #fff; padding: 0 4px; }
+.len-in:hover { border-color: var(--stroke); }
+.len-in:focus { border-color: rgba(61,255,122,.6); background: rgba(0,0,0,.3); }
+.ask-sw { display: inline-flex; align-items: center; gap: 10px; color: var(--label-2); font-size: 13px; margin-right: 6px; cursor: pointer; }
+/* clone */
+.clone-mode { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 10px 0 2px; }
+.clone-mode small { color: var(--label-2); font-size: 13px; }
+.composer textarea.clone-ta.sm { min-height: 80px; font-size: 15px; }
+.remix-text { display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--sep); padding: 12px 0 2px; font-size: 13px; color: var(--label-2); }
+.remix-text > span { flex: 1; min-width: 0; }
+.remix-text.open { display: block; }
+.rt-h { display: flex; align-items: center; gap: 8px; }
+.rt-h svg { color: var(--neon); width: 16px; height: 16px; }
+.rt-h b { color: var(--label); font-weight: 600; font-size: 13.5px; }
+.rt-h small { flex: 1; color: var(--label-2); font-size: 12.5px; }
+.rt-h .x { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: var(--label-2); }
+.rt-h .x:hover { background: rgba(255,255,255,.12); color: #fff; }
+.rt-h .x svg { color: inherit; width: 14px; height: 14px; }
+.page.clone .film-only { display: none; }
+.clone-drop { display: flex; align-items: center; gap: 16px; width: 100%; text-align: left; margin: 10px 0 6px; padding: 22px; border-radius: 16px; border: 1.5px dashed rgba(255,255,255,.18); background: rgba(0,0,0,.2); transition: border-color .15s, background .15s; }
+.clone-drop:hover { border-color: var(--neon); }
+.clone-drop.set { border-style: solid; border-color: rgba(61,255,122,.5); background: rgba(61,255,122,.05); }
+.cd-ic { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: rgba(255,255,255,.08); flex: none; }
+.cd-ic svg { width: 22px; height: 22px; }
+.clone-drop.set .cd-ic { background: var(--neon); color: var(--neon-ink); }
+.cd-t { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cd-t b { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cd-t small { color: var(--label-2); font-size: 13px; }
+.composer textarea.clone-ta { min-height: 96px; font-size: 16px; }
+.clone-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.clone-notes div { display: flex; gap: 10px; align-items: flex-start; padding: 14px 16px; border-radius: 14px; background: var(--glass); border: 1px solid var(--stroke); color: var(--label-2); font-size: 13px; line-height: 1.45; }
+.clone-notes svg { color: var(--neon); margin-top: 2px; }
+@media (max-width: 1000px) { .cols { grid-template-columns: 1fr; } .job { grid-template-columns: 1fr; } .tiles.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18M3 7.5h4M3 12h18M3 16.5h4M17 7.5h4M17 16.5h4"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><path d="m16 13 5.22 3.48a.5.5 0 0 0 .78-.42V7.87a.5.5 0 0 0-.75-.43L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="m22 9-6 6M16 9l6 6"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-cut" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.12 15.88M14.47 14.48 20 20M8.12 8.12 12 12"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 3.9v16.2a1 1 0 0 0 1.5.86l13.8-8.1a1 1 0 0 0 0-1.72L7.5 3.04A1 1 0 0 0 6 3.9z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2.5"/><path d="M12 18h.01"/></symbol>
+</svg>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><i></i>Cinecode Studio</div>
+    <nav class="nav">
+      <button class="row-btn" id="navNew"><svg class="i"><use href="#i-plus"/></svg>Yeni proje</button>
+      <button class="row-btn" id="navLib"><svg class="i"><use href="#i-grid"/></svg>Üretilenler<span class="count" id="libCount"></span></button>
+      <button class="row-btn" id="navSettings"><svg class="i"><use href="#i-gear"/></svg>Ayarlar</button>
+    </nav>
+    <h3>Son projeler</h3>
+    <div class="films" id="films"></div>
+  </aside>
+  <main class="main">
+    <header class="toolbar" id="toolbar"><h1 id="title"></h1><div class="acts" id="acts"></div></header>
+    <section class="body" id="body"></section>
+    <footer class="foot" id="foot"></footer>
+  </main>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const icon = (n, cls = 'i') => `<svg class="${cls}"><use href="#i-${n}"/></svg>`;
+const api = (p, body) => fetch(p, body === undefined ? {} : { method: 'POST', headers: { 'content-type': 'application/json', 'x-cs': '1' }, body: JSON.stringify(body) })
+  .then(async r => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || r.statusText); return d; });
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const fileUrl = p => '/file?p=' + encodeURIComponent(p);
+const base = p => String(p || '').split(/[\\/]/).filter(Boolean).pop() || '';
+const toast = t => { const d = document.createElement('div'); d.className = 'toast'; d.setAttribute('role', 'status'); d.textContent = t; document.body.append(d); setTimeout(() => d.remove(), 2800); };
+const LS = { get(k, f) { try { return JSON.parse(localStorage.getItem(k)) ?? f; } catch { return f; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+
+const KEYS = [
+  ['GEMINI_API_KEY', 'Gemini', 'Anlatım sesi (Gemini TTS). Ücretsiz anahtar: aistudio.google.com/apikey'],
+  ['ELEVENLABS_API_KEY', 'ElevenLabs', 'İsteğe bağlı anlatım sesi. elevenlabs.io › Profile › API keys'],
+  ['PIXABAY_API_KEY', 'Pixabay', 'Stok fotoğraf ve video. Ücretsiz anahtar: pixabay.com/api/docs'],
+];
+const DURS = [[15, '15 sn'], [30, '30 sn'], [60, '1 dk'], [180, '3 dk'], [480, '8 dk']];
+const defaults = { mode: 'quick', purpose: 'cinematic', seconds: 30, aspect: '16:9', res: 1080, fps: 30, lang: 'tr', voice: 'none', voiceGender: 'auto', voiceTone: '', voiceId: '', music: 'open', captions: false, sfx: true, lastVoice: 'gemini', deliver: 'final', scriptMode: 'ai', askFirst: true, cloneMode: 'same', appName: '', appWhat: '', appCta: '' };
+let S = { view: 'new', settings: { ...defaults, ...LS.get('cs.settings', {}), deliver: 'final' }, idea: LS.get('cs.idea', ''), script: LS.get('cs.script', ''), notes: '',
+  refVideo: null, refFolder: null, refImages: [], appVideos: [], musicFile: null, q: null, answers: {}, own: {},
+  job: null, events: [], out: { videos: [], stills: [], state: {} }, pick: null, dockMode: 'revise', ops: [], status: null, jobs: [], est: null };
+let es = null, clock = null;
+const saveDraft = () => { LS.set('cs.settings', S.settings); LS.set('cs.idea', S.idea); LS.set('cs.script', S.script); };
+// Turkish narration runs about 2.2 words a second; English about 2.5.
+const words = t => (t.trim().match(/\S+/g) || []).length;
+const readSecs = t => Math.round(words(t) / (S.settings.lang === 'en' ? 2.5 : 2.2));
+const STATUS = { running: 'Üretiliyor', waiting: 'Hazır', error: 'Hata', stopped: 'Durdu', queued: 'Sırada' };
+function ago(t) { const m = Math.round((Date.now() - t) / 60000); if (m < 1) return 'şimdi'; if (m < 60) return m + ' dk önce'; const h = Math.round(m / 60); if (h < 24) return h + ' sa önce'; return new Date(t).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }); }
+const lenText = s => s >= 60 ? (s % 60 ? `${Math.floor(s / 60)} dk ${s % 60} sn` : `${s / 60} dk`) : s + ' sn';
+
+// ---------- shell ----------
+async function loadJobs() { S.jobs = await api('/api/jobs').catch(() => S.jobs); renderSide(); if (S.view === 'library') renderLibrary(); }
+function renderSide() {
+  $('#navNew').classList.toggle('on', ['new', 'questions', 'plan'].includes(S.view));
+  document.body.classList.toggle('busy', S.jobs.some(j => j.status === 'running'));
+  $('#navLib').classList.toggle('on', S.view === 'library');
+  $('#navSettings').classList.toggle('on', S.view === 'settings');
+  $('#libCount').textContent = S.jobs.length || '';
+  const recent = S.jobs.slice(0, 8);
+  $('#films').innerHTML = recent.length ? recent.map(j => `<button class="film ${S.view === 'job' && S.job?.id === j.id ? 'on' : ''}" data-id="${j.id}">
+      <span class="thumb">${j.lastVideo || j.example ? `<img src="/poster/${j.id}?v=${esc(j.lastVideo || '')}" alt="" onerror="this.replaceWith(document.createRange().createContextualFragment(icon('film')))">` : icon('film')}</span>
+      <b>${esc(j.title)}</b><small><span class="dot ${j.status}"></span>${j.example ? 'Örnek proje' : `${STATUS[j.status] || ''} · ${ago(j.created)}`}</small></button>`).join('')
+    : '<p class="empty-side">Henüz proje yok.</p>';
+  $$('#films .film').forEach(b => b.onclick = () => openJob(b.dataset.id));
+}
+async function refreshStatus() { S.status = await api('/api/status').catch(() => S.status); if (S.view === 'new') renderNew(); if (S.view === 'settings') renderSettings(); }
+function setChrome(title, { lined = false, acts = '' } = {}) { $('#title').textContent = title; $('#acts').innerHTML = acts; $('#toolbar').classList.toggle('lined', lined); }
+function go(view) { closeStream(); S.view = view; S.job = null; $('#foot').innerHTML = ''; renderSide(); }
+
+// ---------- controls ----------
+const RATIO = { '16:9': [16, 9], '9:16': [9, 16], '1:1': [12, 12], '4:5': [11, 14] };
+function seg(key, opts, ratio) {
+  return `<div class="seg" role="radiogroup">${opts.map(([v, l]) => {
+    const on = String(S.settings[key]) === String(v), r = ratio && RATIO[v];
+    return `<button role="radio" aria-checked="${on}" data-set="${key}" data-v="${v}" class="${on ? 'on' : ''}">${r ? `<i class="ratio" style="width:${Math.round(r[0] * .75)}px;height:${Math.round(r[1] * .75)}px"></i>` : ''}${l}</button>`;
+  }).join('')}</div>`;
+}
+const pop = (key, opts) => `<span class="pop"><select data-sel="${key}" aria-label="${key}">${opts.map(([v, l]) => `<option value="${v}" ${String(S.settings[key]) === String(v) ? 'selected' : ''}>${l}</option>`).join('')}</select></span>`;
+const sw = key => `<button class="switch ${S.settings[key] ? 'on' : ''}" role="switch" aria-checked="${!!S.settings[key]}" data-sw="${key}" aria-label="${key}"></button>`;
+const item = (label, ctl, sub) => `<div class="item"><div class="lbl">${label}${sub ? `<small>${sub}</small>` : ''}</div>${ctl ? `<div class="ctl">${ctl}</div>` : ''}</div>`;
+const fmtMin = m => m < 60 ? `${m} dk` : `${Math.floor(m / 60)} sa${m % 60 ? ' ' + (m % 60) + ' dk' : ''}`;
+const estText = () => S.est ? `Tahmini üretim süresi <b>${fmtMin(S.est.minutes)}</b> (${S.est.basis})` : '';
+async function updateEstimate() { S.est = await api(`/api/estimate?mode=${S.settings.mode}&seconds=${S.settings.seconds}`).catch(() => null); const m = $('#estMeta'); if (m) m.innerHTML = estText(); }
+async function pickPath(kind) { try { const r = await api('/api/pick', { kind }); return r.path ? r : null; } catch { return null; } }
+
+// ---------- library ----------
+function renderLibrary() {
+  if (S.view !== 'library') go('library');
+  setChrome('');
+  const live = S.jobs.filter(j => j.status === 'running').length;
+  $('#body').innerHTML = `<div class="page wide">
+    <div class="head-row"><h2 class="large">Üretilenler</h2><button class="btn" id="openRoot">${icon('folder')}Klasörü aç</button><button class="btn primary" id="newP">${icon('plus')}Yeni proje</button></div>
+    ${live ? `<p class="sub">${live} proje şu an üretiliyor.</p>` : ''}
+    ${S.jobs.length ? `<div class="lib">${S.jobs.map(j => {
+      const s = j.settings || {};
+      return `<button class="card" data-id="${j.id}">
+        <div class="poster" style="aspect-ratio:16/9">${j.lastVideo || j.example ? `<img src="/poster/${j.id}?v=${esc(j.lastVideo || '')}" alt="" onerror="this.replaceWith(document.createRange().createContextualFragment(icon('film')))">` : icon('film')}
+          ${j.status === 'running' ? `<span class="live"><span class="dot running"></span>Üretiliyor</span>` : ''}</div>
+        <b>${esc(j.title)}</b>
+        <small><span class="dot ${j.status}"></span>${j.example ? 'Örnek' : STATUS[j.status] || ''} · ${s.aspect || ''} · ${lenText(s.seconds || 0)}${j.example ? '' : ` · ${ago(j.created)}`}</small>
+      </button>`;
+    }).join('')}</div>`
+    : `<div class="empty">${icon('film')}<h2>Henüz bir şey üretilmedi</h2><p>Bir fikir yaz, birkaç soruyu cevapla; film burada belirir.</p><button class="btn lg primary" id="newP2">Yeni proje</button></div>`}
+  </div>`;
+  $$('.card').forEach(c => c.onclick = () => openJob(c.dataset.id));
+  $('#newP').onclick = renderNew; if ($('#newP2')) $('#newP2').onclick = renderNew;
+  $('#openRoot').onclick = () => api('/api/open-root', {});
+}
+
+// ---------- new project: brief, questions, script, production ----------
+const FLOW = [['new', 'Brief'], ['questions', 'Sorular'], ['plan', 'Senaryo'], ['go', 'Üretim']];
+function flowBar(at) {
+  const i = FLOW.findIndex(([k]) => k === at);
+  return `<ol class="flow">${FLOW.map(([k, l], n) => `<li class="${n < i ? 'done' : n === i ? 'now' : ''}"><button ${n < i && k !== 'go' ? `data-flow="${k}"` : 'disabled'}><span>${n < i ? icon('check') : n + 1}</span>${l}</button></li>`).join('')}</ol>`;
+}
+function bindFlow() {
+  $$('[data-flow]').forEach(b => b.onclick = () => ({ new: renderNew, questions: () => S.q ? (go('questions'), renderQuestions()) : askQuestions(), plan: () => S.plan ? (go('plan'), renderPlan()) : writePlan() })[b.dataset.flow]());
+}
+const ASPECTS = [['16:9', 'YouTube, sunum'], ['9:16', 'Reels, TikTok, Shorts'], ['1:1', 'Kare akış'], ['4:5', 'Instagram akış']];
+const VOICES = [['gemini', 'Gemini', 'Ücretsiz anahtarla'], ['elevenlabs', 'ElevenLabs', 'En gerçekçi ses'], ['ema', 'Yerel', 'İnternetsiz çalışır']];
+const MUSICS = [['open', 'Hazır kayıt', 'Açık lisanslı müzik'], ['code', 'Kodla beste', 'Filme özel yazılır'], ['own', 'Kendi dosyam', 'Kurgu müziğe oturur'], ['none', 'Müziksiz', 'Yalnız efekt ve anlatım']];
+const PURPOSES = [['cinematic', 'Sinematik', 'Hikâye, his, atmosfer'], ['ad', 'Reklam', 'Ürün, mesaj, çağrı'], ['app', 'Uygulama tanıtımı', 'Kendi uygulamanın promosu']];
+const WPS = () => S.settings.lang === 'en' ? 2.5 : 2.2;
+// Evenly spaced stops; linear inside each gap, so halfway between "30 sn" and "1 dk" is 45 sn.
+const STOPS = [[5, '5 sn'], [15, '15 sn'], [30, '30 sn'], [60, '1 dk'], [180, '3 dk'], [300, '5 dk'], [600, '10 dk'], [1800, '30 dk']];
+const SEG = 1000 / (STOPS.length - 1);
+function secToSlider(sec) {
+  sec = Math.max(5, Math.min(1800, sec));
+  for (let i = 1; i < STOPS.length; i++) { const [a] = STOPS[i - 1], [b] = STOPS[i]; if (sec <= b) return Math.round((i - 1 + (sec - a) / (b - a)) * SEG); }
+  return 1000;
+}
+function sliderToSec(v) { const i = Math.min(STOPS.length - 2, Math.floor(v / SEG)), f = v / SEG - i, raw = STOPS[i][0] + f * (STOPS[i + 1][0] - STOPS[i][0]); const step = raw < 120 ? 1 : raw < 600 ? 5 : 15; return Math.max(5, Math.min(1800, Math.round(raw / step) * step)); }
+const tcode = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
+function tile(key, v, title, sub, extra = '') {
+  const on = String(S.settings[key]) === String(v);
+  return `<button class="tile ${on ? 'on' : ''}" role="radio" aria-checked="${on}" data-set="${key}" data-v="${v}">${extra}<b>${title}</b><small>${sub}</small></button>`;
+}
+function frame(r) { const [w, h] = RATIO[r]; const k = 34 / Math.max(w, h); return `<span class="frame"><i style="width:${Math.round(w * k)}px;height:${Math.round(h * k)}px"></i></span>`; }
+function lenHint() {
+  const s = S.settings, w = Math.round(s.seconds * (s.lang === 'en' ? 2.5 : 2.2));
+  return `${s.mode === 'film' ? 'Film modu' : 'Hızlı mod'}${s.voice !== 'none' ? `, anlatım en fazla ${w} kelime` : ''}`;
+}
+
+function renderNew() {
+  if (S.view !== 'new') go('new');
+  setChrome('');
+  const s = S.settings, k = S.status?.keys || {}, own = s.scriptMode === 'own', clone = s.scriptMode === 'clone';
+  if (s.sfx === undefined) s.sfx = true;
+  if (s.narr === undefined) s.narr = s.voice !== 'none' && !s.dialog;
+  if (s.voice === 'none') s.narr = s.dialog = false;
+  const dlg = !!s.dialog, narr = !!s.narr;
+  const chip = (id, ic, val, empty) => val
+    ? `<span class="chip set">${icon(ic)}<span>${esc(val)}</span><button class="x" data-clear="${id}" aria-label="Kaldır">${icon('x')}</button></span>`
+    : `<button class="chip" data-attach="${id}">${icon(ic)}<span>${empty}</span></button>`;
+  const keyName = s.voice === 'gemini' ? 'GEMINI_API_KEY' : s.voice === 'elevenlabs' ? 'ELEVENLABS_API_KEY' : null;
+  $('#body').innerHTML = `<div class="page ${clone ? 'clone' : ''}">
+    ${clone ? '' : flowBar('new')}
+    <h2 class="large">Yeni proje</h2>
+    <div class="composer">
+      <div class="comp-tabs" role="tablist">
+        <button role="tab" aria-selected="${!own && !clone}" class="${!own && !clone ? 'on' : ''}" data-set="scriptMode" data-v="ai">${icon('bulb')}Fikirden yaz</button>
+        <button role="tab" aria-selected="${own}" class="${own ? 'on' : ''}" data-set="scriptMode" data-v="own">${icon('doc')}Kendi metnim</button>
+        <button role="tab" aria-selected="${clone}" class="${clone ? 'on' : ''}" data-set="scriptMode" data-v="clone">${icon('copy')}Videoyu klonla</button>
+      </div>
+      ${clone ? `<button class="clone-drop ${S.refVideo ? 'set' : ''}" id="cloneVid">${S.refVideo
+          ? `<span class="cd-ic">${icon('video')}</span><span class="cd-t"><b>${esc(base(S.refVideo.path))}</b><small>Değiştirmek için tıkla</small></span>`
+          : `<span class="cd-ic">${icon('video')}</span><span class="cd-t"><b>Klonlanacak videoyu seç</b><small>MP4, MOV ya da WebM. HyperFrames her katmanı ölçüp düzenlenebilir bir proje olarak yeniden kurar.</small></span>`}</button>
+        <div class="clone-mode">${seg('cloneMode', [['same', 'Aynısını kur'], ['remix', 'Bu kalıpla yeni video']])}<small>${s.cloneMode === 'remix' ? 'Kurgu, ritim, yazı stili ve geçişler videodan; konu senden.' : 'Video katman katman yeniden kurulur; istersen küçük değişiklikler yaz.'}</small></div>
+        ${s.cloneMode === 'remix'
+          ? `<textarea id="idea" class="clone-ta" aria-label="Konu" placeholder="Yeni video ne hakkında? Örn. bu videodaki gibi, PENGBALL oyunumu anlatan bir video.">${esc(S.idea)}</textarea>
+             ${S.ownText || S.script.trim()
+               ? `<div class="remix-text open"><div class="rt-h">${icon('doc')}<b>Kendi metnin</b><small>Ekrandaki yazılar ya da anlatım, sırasıyla; aynen kullanılır.</small><button class="x" id="dropText" aria-label="Metni kaldır" title="Metni kaldır, konuya göre yazılsın">${icon('x')}</button></div>
+                  <textarea id="script" class="clone-ta sm" aria-label="Kendi metnin" placeholder="İlk ekran: Her çizim bir masal…">${esc(S.script)}</textarea></div>`
+               : `<div class="remix-text"><span>Metin, konuna göre videodaki yazıların uzunluğu ve tonuyla yazılır.</span><button class="chip" id="ownText">${icon('doc')}<span>Metni kendim yazacağım</span></button></div>`}`
+          : `<textarea id="idea" class="clone-ta" aria-label="Değişiklikler" placeholder="Ne değişsin? Boş bırakırsan video olduğu gibi kurulur. Örn. yazılar İngilizce olsun, logo benimki, renkler siyah ve yeşil.">${esc(S.idea)}</textarea>`}`
+      : own ? `<input class="idea-line" id="idea" placeholder="Film ne hakkında? (isteğe bağlı)" value="${esc(S.idea)}" aria-label="Fikir">
+        <textarea id="script" class="script-ta" placeholder="Anlatım ya da ekrandaki yazılar. Kelimeler aynen kullanılır; her paragraf bir sahne gibi okunur." aria-label="Senaryo">${esc(S.script)}</textarea>
+        <div class="script-bar"><span id="scriptInfo">${scriptInfo()}</span><span style="flex:1"></span>
+          <button class="btn sm" id="fitDur" ${!words(S.script) ? 'disabled' : ''}>Süreyi metne ayarla</button>
+          <button class="btn sm" id="scriptFile">${icon('folder')}Dosyadan al</button></div>`
+      : `<textarea id="idea" aria-label="Fikir" placeholder="Ne anlatmak istiyorsun? Bir hikâye, bir ürün, bir yer, bir his…">${esc(S.idea)}</textarea>`}
+      ${clone ? '' : `<div id="durHint" class="dur-hint" hidden></div><div class="attach">
+        ${s.purpose === 'app' ? '' : (S.refImages || []).map((r, i) => `<span class="chip set">${icon('image')}<span>${esc(base(r.path))}</span><button class="x" data-rmimg="${i}" aria-label="Kaldır">${icon('x')}</button></span>`).join('')}
+        ${s.purpose !== 'app' && (S.refImages || []).length < 12 ? `<button class="chip" data-addimg>${icon('image')}<span>${(S.refImages || []).length ? 'Görsel ekle' : 'Referans görsel'}</span></button>` : ''}
+        ${chip('refFolder', 'folder', S.refFolder && `${base(S.refFolder.path)}${S.refFolder.count ? ` (${S.refFolder.count} dosya)` : ""}`, 'Klasör')}
+        ${chip('refVideo', 'video', S.refVideo && base(S.refVideo.path), 'Referans video')}
+        ${s.music === 'own' ? chip('musicFile', 'music', S.musicFile && base(S.musicFile.path), 'Müzik dosyası') : ''}
+      </div>`}
+    </div>
+    ${clone ? `<div class="clone-notes">
+      <div>${icon('check')}<span>${s.cloneMode === 'remix' ? 'Boyut, süre, kesme zamanları ve hareket dili videodan gelir; içerik yeni konuya göre değişir.' : 'Boyut, kare hızı, süre ve ses orijinalden gelir; kesmeler kare kare ölçülür.'}</span></div>
+      <div>${icon('check')}<span>Sonuç düzenlenebilir bir HyperFrames projesi ve yerel render edilmiş bir MP4.</span></div>
+      <div>${icon('check')}<span>HyperFrames Pro gerekir. Hesabın Pro değilse üretim durur ve yükseltme linkini burada gösterir.</span></div>
+      <div>${icon('check')}<span>Ücretli adım çalışmaz: kişi yeniden çekimi ve bulut render kapalı. Yalnız kullanma hakkın olan videoları klonla.</span></div>
+    </div>` : ''}
+    <div class="film-only">
+
+    <div class="sec-h"><h3>Biçim</h3><small>${sizeText()}</small></div>
+    <div class="tiles four" role="radiogroup">${ASPECTS.map(([v, sub]) => tile('aspect', v, v, sub, frame(v))).join('')}</div>
+
+    <div class="sec-h"><h3>Süre</h3><small>${lenHint()}</small></div>
+    <div class="len">
+      <div class="len-top"><div class="len-val"><button class="nudge" data-nudge="-1" aria-label="1 saniye azalt">−</button><input id="lenOut" class="len-in" value="${lenText(s.seconds)}" aria-label="Süre" title="Yaz: 90, 1:30 ya da 1 dk 30 sn"><button class="nudge" data-nudge="1" aria-label="1 saniye artır">+</button></div>
+        <small class="len-mode">${s.mode === 'film' ? 'Film modu' : 'Hızlı mod'}</small></div>
+      <input type="range" id="lenRange" min="0" max="1000" value="${secToSlider(s.seconds)}" style="--p:${secToSlider(s.seconds) / 1000}" aria-label="Süre">
+      <div class="len-scale">${STOPS.map(([v, l]) => `<button class="${s.seconds === v ? 'on' : ''}" data-set="seconds" data-v="${v}" style="--p:${secToSlider(v) / 1000}">${l}</button>`).join('')}</div>
+    </div>
+
+    <div class="sec-h"><h3>Ses</h3><small>Konuşma, efekt ve müzik ayrı ayrı</small></div>
+    <div class="group">
+      ${item('Anlatıcı', sw('narr'), narr ? 'Görüntünün üstünden anlatan tek ses' : 'Kapalı')}
+      ${item('Diyalog', sw('dialog'), dlg ? 'Karakterler kendi sesleriyle konuşur; kim konuşacak, senaryodan çıkar' : 'Kapalı')}
+      ${item('Efekt ve ortam sesi', sw('sfx'), s.sfx ? 'Açık lisanslı gerçek kayıtlar (Freesound, Wikimedia) ve kodla geçiş sesleri. Kaynağı cinecode bulur, anahtar gerekmez' : 'Kapalı; yalnız konuşma ve müzik')}
+    </div>
+    ${dlg ? `<p class="note-line">Karakterleri ve seslerini senaryoya göre cinecode seçer; her karakter hep aynı sesle konuşur. Karakterler kodla çizildiği için dudak senkronu yok: konuşmalar yüz yakın plandayken değil, uzaktan ya da ekran dışından kurulur.</p>` : ''}
+    ${s.voice !== 'none' ? `<div class="sec-h sub2"><small>${dlg ? 'Seslendirme' : 'Anlatıcının sesi'}</small></div>
+    <div class="tiles ${dlg ? 'two' : 'three'}" role="radiogroup">${VOICES.filter(([v]) => !dlg || v !== 'ema').map(([v, t, sub]) => tile('voice', v, t, sub, `<span class="tile-ic">${icon('wave')}</span>${(v === 'gemini' && k.GEMINI_API_KEY) || (v === 'elevenlabs' && k.ELEVENLABS_API_KEY) ? '<span class="tile-ok" title="Anahtar bağlı"></span>' : ''}`)).join('')}</div>
+    <div class="group mt">
+      ${keyName ? item(`${s.voice === 'gemini' ? 'Gemini' : 'ElevenLabs'} anahtarı`, keyCtl(keyName), k[keyName] ? 'Bu bilgisayarda saklı' : 'Seslendirme için gerekli') : ''}
+      ${!narr ? '' : item(dlg ? 'Anlatıcının sesi' : 'Ses', seg('voiceGender', [['auto', 'Otomatik'], ['female', 'Kadın'], ['male', 'Erkek']]))}
+      ${item('Ton', pop('voiceTone', [['', 'Filme göre'], ['sakin anlatıcı', 'Sakin anlatıcı'], ['belgesel', 'Belgesel'], ['gizemli', 'Gizemli'], ['enerjik', 'Enerjik'], ['samimi', 'Samimi']]))}
+      ${s.voice === 'elevenlabs' ? item('Ses kimliği', `<input class="field" id="voiceId" style="width:200px" placeholder="Boşsa filme uyan ses" value="${esc(s.voiceId || '')}" aria-label="ElevenLabs ses kimliği">`) : ''}
+    </div>` : ''}
+    <div class="sec-h sub2"><small>Müzik</small></div>
+    <div class="tiles four" role="radiogroup">${MUSICS.map(([v, t, sub]) => tile('music', v, t, sub, `<span class="tile-ic">${icon(v === 'none' ? 'mute' : 'music')}</span>`)).join('')}</div>
+    ${s.voice === 'none' && !s.sfx && s.music === 'none' ? `<p class="warn-line">Konuşma, efekt ve müzik kapalı: film tamamen sessiz olur.</p>` : ''}
+
+    <div class="sec-h"><h3>Üretim</h3><small>Ton ve teknik</small></div>
+    <div class="tiles three" role="radiogroup">${PURPOSES.map(([v, t, sub]) => tile('purpose', v, t, sub, `<span class="tile-ic">${icon(v === 'ad' ? 'tag' : v === 'app' ? 'phone' : 'film')}</span>`)).join('')}</div>
+    ${s.purpose === 'app' ? `<div class="group mt">
+      ${item('Uygulama adı', `<input class="field" data-txt="appName" style="width:280px" placeholder="Örn. PENGBALL" value="${esc(s.appName)}" aria-label="Uygulama adı">`)}
+      ${item('Ne yapar', `<input class="field" data-txt="appWhat" style="width:380px" placeholder="Tek cümle: penguenlerle kartopu savaşı oyunu" value="${esc(s.appWhat)}" aria-label="Ne yapar">`)}
+      ${item('Kapanış çağrısı', `<input class="field" data-txt="appCta" style="width:280px" placeholder="App Store'dan indir" value="${esc(s.appCta)}" aria-label="Kapanış çağrısı">`)}
+    </div>
+    <div class="sec-h sub2"><small>Ekranlar</small><small class="tray-count">${trayCount()}</small></div>
+    <div class="tray" id="tray">
+      ${trayItems().map(t => `<figure class="ti ${t.kind}" title="${esc(t.path)}"><span class="ti-media"><img src="/thumb?p=${encodeURIComponent(t.path)}" alt="" loading="lazy">${t.kind === 'vid' ? `<span class="ti-badge">${icon('play')}</span>` : ''}</span><figcaption>${esc(base(t.path))}</figcaption><button class="ti-x" data-trayrm="${t.kind}:${t.i}" aria-label="Kaldır">${icon('x')}</button></figure>`).join('')}
+      <button class="ti add" id="trayAdd"><span class="ti-media">${icon('plus')}<b>Ekle</b><small>Görüntü ya da kayıt, birden çok seçebilirsin</small></span><figcaption>&nbsp;</figcaption></button>
+    </div>
+    <p class="note-line">${trayItems().length ? 'Promonun kahramanı bunlar: gerçek ekranlar telefon çerçevesinde gösterilir. Sürükleyip bırakarak da ekleyebilirsin.' : 'Ekran görüntüsü ya da ekran kaydı ekle; sürükleyip bırakabilirsin. Gerçek ekran olmazsa arayüz stilize çizilir.'}</p>` : ''}
+    <div class="group mt">
+      ${item('Mod', seg('mode', [['quick', 'Hızlı'], ['film', 'Film']]), s.mode === 'film' ? 'Senaryo, stil karesi, animatik, 3D render' : 'Tek dosya, 3 dakikaya kadar')}
+      ${item('Çözünürlük', seg('res', [[720, '720p'], [1080, '1080p'], [2160, '4K']]))}
+      ${item('Kare hızı', seg('fps', [[24, '24'], [30, '30'], [60, '60']]))}
+      ${item('Dil', seg('lang', [['tr', 'Türkçe'], ['en', 'English']]))}
+      ${item('Altyazı', sw('captions'), 'Konuşma ve yazılar ekranda')}
+    </div>
+
+    </div>
+    <div class="sec-h"><h3>Kayıt</h3></div>
+    <div class="group">
+      ${item(`<span class="path">${esc(base(S.status?.filmsRoot || ''))}</span><small class="path" title="${esc(S.status?.filmsRoot || '')}">${esc(S.status?.filmsRoot || '')}</small>`, '<button class="btn" id="chRoot">Değiştir</button>')}
+      <div class="item"><input class="field bare" id="notes" placeholder="Ek not: renkler, marka, olmasın dediğin şeyler" value="${esc(S.notes)}" aria-label="Ek not"></div>
+    </div>
+  </div>`;
+  $('#foot').innerHTML = clone ? `<div class="foot-in"><div class="meta">HyperFrames ile, bu bilgisayarda</div><button class="btn lg primary" id="goClone" ${S.refVideo ? '' : 'disabled'}>${s.cloneMode === 'remix' ? 'Yeni videoyu kur' : 'Klonla'}</button></div>`
+    : `<div class="foot-in"><div class="meta" id="estMeta">${estText()}</div>
+    <label class="ask-sw" title="Kapalıysa doğrudan senaryoya geçer">${sw('askFirst')}<span>Önce soru sorsun</span></label>
+    <button class="btn lg primary" id="goQ">${s.askFirst ? 'Devam' : 'Senaryoyu yaz'}</button></div>`;
+  bindFlow();
+  const ta = $('#idea'); ta.oninput = () => { S.idea = ta.value; saveDraft(); durHint(); };
+  durHint();
+  $('#notes').oninput = e => S.notes = e.target.value;
+  $$('[data-set]').forEach(b => b.onclick = () => {
+    const k = b.dataset.set; let v = b.dataset.v;
+    v = v === 'true' ? true : v === 'false' ? false : /^\d+$/.test(v) ? +v : v;
+    if (k === 'voice') S.settings.lastVoice = v;
+    S.settings[k] = v; if (k === 'seconds') S.settings.mode = v > 180 ? 'film' : 'quick';
+    saveDraft(); keepScroll(renderNew); updateEstimate();
+  });
+  const rg = $('#lenRange');
+  rg.oninput = () => { rg.style.setProperty('--p', rg.value / 1000); const v = sliderToSec(+rg.value); S.settings.seconds = v; $('#lenOut').value = lenText(v); $$('.len-scale button').forEach(b => b.classList.toggle('on', +b.dataset.v === v)); };
+  rg.onchange = () => { S.settings.mode = S.settings.seconds > 180 ? 'film' : 'quick'; saveDraft(); keepScroll(renderNew); updateEstimate(); };
+  $$('[data-sel]').forEach(x => x.onchange = () => { S.settings[x.dataset.sel] = x.value; saveDraft(); keepScroll(renderNew); });
+  $$('[data-sw]').forEach(x => x.onclick = () => {
+    const k = x.dataset.sw, st = S.settings; st[k] = !st[k];
+    if (k === 'narr' || k === 'dialog') {
+      const last = st.lastVoice || 'gemini';
+      st.voice = !st.narr && !st.dialog ? 'none' : st.dialog && last === 'ema' ? 'gemini' : last;
+    }
+    saveDraft(); keepScroll(renderNew);
+  });
+  $$('[data-key]').forEach(b => b.onclick = () => keySheet(b.dataset.key));
+  $$('[data-attach]').forEach(b => b.onclick = async () => { const id = b.dataset.attach; const r = await pickPath({ refFolder: 'folder', refVideo: 'video', musicFile: 'audio' }[id]); if (r) { S[id] = r; keepScroll(renderNew); } });
+  $$('[data-clear]').forEach(b => b.onclick = () => { S[b.dataset.clear] = null; keepScroll(renderNew); });
+  $$('[data-addimg]').forEach(b => b.onclick = async () => { const r = await pickPath('image'); if (r) { S.refImages = [...(S.refImages || []), r]; keepScroll(renderNew); } });
+  if ($('#trayAdd')) $('#trayAdd').onclick = async () => { try { const r = await api('/api/pick', { kind: 'media' }); addMedia(r.paths || []); } catch (e) { toast(e.message); } };
+  $$('[data-trayrm]').forEach(b => b.onclick = () => { const [k, i] = b.dataset.trayrm.split(':'); (k === 'vid' ? S.appVideos : S.refImages).splice(+i, 1); keepScroll(renderNew); });
+  const tray = $('#tray');
+  if (tray) {
+    tray.ondragover = e => { e.preventDefault(); tray.classList.add('drag'); };
+    tray.ondragleave = () => tray.classList.remove('drag');
+    tray.ondrop = async e => {
+      e.preventDefault(); tray.classList.remove('drag');
+      const files = [...(e.dataTransfer?.files || [])].filter(f => MEDIA_RE.test(f.name));
+      if (!files.length) return toast('Görsel ya da video bırak');
+      toast(`${files.length} dosya ekleniyor`);
+      const paths = [];
+      for (const f of files) { try { const r = await fetch('/api/upload?name=' + encodeURIComponent(f.name), { method: 'POST', headers: { 'x-cs': '1' }, body: f }).then(x => x.json()); if (r.path) paths.push(r.path); } catch {} }
+      addMedia(paths);
+    };
+  }
+  $$('[data-rmimg]').forEach(b => b.onclick = () => { S.refImages.splice(+b.dataset.rmimg, 1); keepScroll(renderNew); });
+  $('#chRoot').onclick = changeRoot;
+  if ($('#voiceId')) $('#voiceId').onchange = e => { S.settings.voiceId = e.target.value.trim(); saveDraft(); };
+  if ($('#script')) {
+    $('#script').oninput = e => { S.script = e.target.value; saveDraft(); $('#scriptInfo').textContent = scriptInfo(); $('#fitDur').disabled = !words(S.script); };
+    $('#fitDur').onclick = () => { const sec = Math.max(5, readSecs(S.script) + 4); S.settings.seconds = sec; S.settings.mode = sec > 180 ? 'film' : 'quick'; saveDraft(); keepScroll(renderNew); updateEstimate(); toast(`Süre ${lenText(sec)} oldu`); };
+    $('#scriptFile').onclick = async () => { try { const r = await api('/api/pick', { kind: 'text' }); if (r.text) { S.script = r.text; saveDraft(); keepScroll(renderNew); } } catch (e) { toast(e.message); } };
+  }
+  if (clone) {
+    $('#cloneVid').onclick = async () => { const r = await pickPath('video'); if (r) { S.refVideo = r; keepScroll(renderNew); } };
+    if ($('#script')) $('#script').oninput = e => { S.script = e.target.value; saveDraft(); };
+    if ($('#ownText')) $('#ownText').onclick = () => { S.ownText = true; keepScroll(renderNew); $('#script')?.focus(); };
+    if ($('#dropText')) $('#dropText').onclick = () => { S.ownText = false; S.script = ''; saveDraft(); keepScroll(renderNew); };
+    $('#goClone').onclick = startClone;
+    return;
+  }
+  $('#goQ').onclick = () => { if (!hasBrief()) return $('#idea').focus(); if (S.settings.askFirst) return askQuestions(); S.q = { title: titleFrom(S.idea || S.script), questions: [] }; S.answers = {}; writePlan(); };
+  const lo = $('#lenOut');
+  if (lo) {
+    lo.onfocus = () => lo.select();
+    lo.onkeydown = e => { if (e.key === 'Enter') lo.blur(); if (e.key === 'Escape') { lo.value = lenText(S.settings.seconds); lo.blur(); } };
+    lo.onchange = () => { const v = parseLen(lo.value); if (!v) { lo.value = lenText(S.settings.seconds); return toast('Örn. 90, 1:30 ya da 1 dk 30 sn'); }
+      S.settings.seconds = Math.max(5, Math.min(1800, v)); S.settings.mode = S.settings.seconds > 180 ? 'film' : 'quick'; saveDraft(); keepScroll(renderNew); updateEstimate(); };
+  }
+  $$('[data-nudge]').forEach(b => b.onclick = () => { const v = Math.max(5, Math.min(1800, S.settings.seconds + +b.dataset.nudge)); S.settings.seconds = v; S.settings.mode = v > 180 ? 'film' : 'quick'; saveDraft(); keepScroll(renderNew); updateEstimate(); });
+  $$('[data-txt]').forEach(x => x.oninput = () => { S.settings[x.dataset.txt] = x.value; saveDraft(); });
+  if (!S.est) updateEstimate();
+}
+function sizeText() { const s = S.settings, m = { '16:9': [16, 9], '9:16': [9, 16], '1:1': [1, 1], '4:5': [4, 5] }[s.aspect], long = s.res === 2160 ? 3840 : s.res === 1080 ? 1920 : 1280, short = s.res === 2160 ? 2160 : s.res;
+  const [w, h] = s.aspect === '1:1' ? [short, short] : s.aspect === '4:5' ? [Math.round(short * 1.25 * .8), Math.round(short * 1.25)] : m[0] > m[1] ? [long, short] : [short, long];
+  return `${w} × ${h}, ${s.fps} fps`; }
+const hasBrief = () => !!(S.idea.trim() || (S.settings.scriptMode === 'own' && words(S.script)));
+function keyCtl(name) {
+  return S.status?.keys?.[name] ? `<span class="ok-ic">${icon('check')}Bağlı</span><button class="btn" data-key="${name}">Değiştir</button>` : `<button class="btn primary" data-key="${name}">Anahtar bağla</button>`;
+}
+function scriptInfo() {
+  const w = words(S.script); if (!w) return 'Metin boş';
+  const sec = readSecs(S.script), diff = sec - S.settings.seconds;
+  return `${w} kelime, okuması yaklaşık ${lenText(sec)}` + (Math.abs(diff) > 5 ? (diff > 0 ? `; seçilen süreden ${lenText(diff)} uzun` : `; süreye ${lenText(-diff)} boşluk kalır`) : '; süreye uyuyor');
+}
+function keepScroll(fn) { const y = $('#body').scrollTop; fn(); $('#body').scrollTop = y; }
+async function changeRoot() {
+  const r = await pickPath('folder'); if (!r) return;
+  try { await api('/api/settings', { filmsRoot: r.path }); await refreshStatus(); toast('Kayıt yeri değişti'); } catch (e) { toast(e.message); }
+}
+const titleFrom = t => t.trim().split(/\s+/).slice(0, 4).join(' ').replace(/[.,:;]$/, '');
+const briefBody = () => ({ idea: S.idea, settings: S.settings, notes: S.notes, refVideo: S.refVideo?.path, refFolder: S.refFolder?.path, refImages: (S.refImages || []).map(r => r.path), appVideos: S.settings.purpose === 'app' ? (S.appVideos || []).map(r => r.path) : [], script: S.settings.scriptMode === 'own' ? S.script : '' });
+
+// ---------- questions ----------
+async function askQuestions() {
+  if (!hasBrief()) return $('#idea')?.focus();
+  if (!S.idea.trim()) S.idea = S.script.trim().split(/\n/)[0].slice(0, 120);
+  go('questions'); setChrome('');
+  $('#body').innerHTML = `<div class="page">${flowBar('questions')}<h2 class="large">Sorular</h2><div class="loading"><span class="spin"></span>Fikrine göre sorular hazırlanıyor</div></div>`;
+  $('#foot').innerHTML = '<div class="foot-in"><div class="meta"></div><button class="btn lg" id="back">Geri</button></div>';
+  $('#back').onclick = renderNew; bindFlow();
+  try {
+    S.q = await api('/api/questions', briefBody());
+    if (S.view !== 'questions') return;
+    S.answers = {}; S.own = {}; S.plan = null;
+    for (const q of S.q.questions) { const star = q.options.find(o => o.label.includes('★')) || q.options[0]; S.answers[q.id] = q.multi ? [star.label] : star.label; }
+    saveFlow(); renderQuestions();
+  } catch (e) { $('#body').innerHTML = `<div class="page">${flowBar('questions')}<h2 class="large">Sorular</h2><div class="msg err">${esc(e.message)}</div></div>`; }
+}
+function renderQuestions() {
+  const y = $('#body').scrollTop;
+  $('#body').innerHTML = `<div class="page">${flowBar('questions')}<h2 class="large">${esc(S.q.title || 'Sorular')}</h2>
+  <p class="sub">Önerilenler seçili geldi. Değiştirmek istediğine dokun.</p>
+  ${S.q.questions.map((q, n) => {
+    const a = S.answers[q.id], on = l => q.multi ? (a || []).includes(l) : a === l;
+    const ownOn = q.multi ? (a || []).some(x => !q.options.some(o => o.label === x)) : !!a && !q.options.some(o => o.label === a);
+    return `<div class="q-title"><span class="q-n">${n + 1}</span>${esc(q.q)}${q.multi ? '<span class="tag">birden fazla seçilebilir</span>' : ''}</div><div class="group">
+      ${q.options.map(o => `<button class="item opt ${on(o.label) ? 'on' : ''}" data-q="${q.id}" data-l="${esc(o.label)}"><span class="radio"></span><div class="lbl"><b>${esc(o.label.replace(' ★', ''))}</b>${o.label.includes('★') ? '<span class="tag rec">önerilen</span>' : ''}${o.hint ? `<small>${esc(o.hint)}</small>` : ''}</div></button>`).join('')}
+      <label class="item opt ${ownOn ? 'on' : ''}"><span class="radio"></span><div class="lbl"><input class="field bare" data-own="${q.id}" placeholder="Kendi cevabım" value="${esc(S.own[q.id] || '')}"></div></label>
+    </div>`;
+  }).join('')}</div>`;
+  $('#body').scrollTop = y;
+  $('#foot').innerHTML = `<div class="foot-in"><div class="meta" id="estMeta">${estText()}</div><button class="btn lg" id="back">Geri</button><button class="btn lg primary" id="go">Senaryoyu yaz</button></div>`;
+  $('#back').onclick = renderNew; $('#go').onclick = () => { S.plan = null; writePlan(); }; bindFlow();
+  $$('.opt[data-q]').forEach(b => b.onclick = () => {
+    const q = S.q.questions.find(x => x.id === b.dataset.q), l = b.dataset.l;
+    if (q.multi) { const a = S.answers[q.id] || []; S.answers[q.id] = a.includes(l) ? a.filter(x => x !== l) : [...a, l]; } else { S.answers[q.id] = l; S.own[q.id] = ''; }
+    saveFlow(); renderQuestions();
+  });
+  $$('[data-own]').forEach(i => i.onchange = () => {
+    const id = i.dataset.own, q = S.q.questions.find(x => x.id === id), v = i.value.trim(); S.own[id] = v;
+    if (q.multi) { const keep = (S.answers[id] || []).filter(x => q.options.some(o => o.label === x)); S.answers[id] = v ? [...keep, v] : keep; }
+    else if (v) S.answers[id] = v;
+    saveFlow(); renderQuestions();
+  });
+}
+
+// ---------- script and cut ----------
+async function writePlan(note) {
+  const prev = note !== undefined ? S.plan : null;
+  go('plan'); setChrome('');
+  $('#body').innerHTML = `<div class="page">${flowBar('plan')}<h2 class="large">${esc(S.q?.title || 'Senaryo')}</h2>
+    <div class="loading"><span class="spin"></span>${prev ? 'Notuna göre yeniden yazılıyor' : 'Senaryo ve kurgu yazılıyor'}. Yarım dakika kadar sürer.</div></div>`;
+  $('#foot').innerHTML = '<div class="foot-in"><div class="meta"></div><button class="btn lg" id="back">Geri</button></div>';
+  $('#back').onclick = () => S.q?.questions?.length ? (go('questions'), renderQuestions()) : renderNew(); bindFlow();
+  try {
+    const p = await api('/api/plan', { ...briefBody(), questions: S.q?.questions || [], answers: S.answers, prev, note });
+    if (S.view !== 'plan') return;
+    S.plan = p; saveFlow(); renderPlan();
+  } catch (e) { if (S.view === 'plan') $('#body').innerHTML = `<div class="page">${flowBar('plan')}<h2 class="large">Senaryo</h2><div class="msg err">${esc(e.message)}</div><p class="sub" style="margin-top:12px">Senaryoyu atlayıp doğrudan üretebilirsin; o zaman cinecode kendisi yazar.</p></div>`; }
+}
+function renderPlan() {
+  const p = S.plan, s = S.settings, y = $('#body').scrollTop, total = p.scenes.at(-1)?.t1 || s.seconds, wps = WPS();
+  const narr = p.scenes.reduce((a, c) => a + words(c.text || ''), 0), cap = Math.floor(total * wps);
+  const over = p.scenes.filter(c => s.voice !== 'none' && words(c.text || '') > Math.floor((c.t1 - c.t0) * wps)).length;
+  const off = Math.round((total - s.seconds) * 10) / 10;
+  $('#body').innerHTML = `<div class="page">${flowBar('plan')}
+    <input class="plan-title" id="pTitle" value="${esc(p.title)}" aria-label="Film adı">
+    <textarea class="plan-log auto" id="pLog" rows="1" aria-label="Logline">${esc(p.logline)}</textarea>
+    <div class="plan-meta"><span class="${off ? 'warn' : ''}">${icon('clock')}${lenText(Math.round(total))}${off ? ` (hedef ${lenText(s.seconds)})` : ''}</span><span>${icon('cut')}${p.scenes.length} sahne</span>${s.voice !== 'none' ? `<span class="${narr > cap ? 'warn' : ''}">${icon('wave')}${narr} / ${cap} kelime</span>` : ''}<span>${icon('eye')}<input class="bare-in" id="pLook" value="${esc(p.look)}" aria-label="Görsel dil"></span></div>
+    ${over || off ? `<div class="fit-bar">${icon('clock')}<span>${[over ? `${over} sahnenin metni süresine sığmıyor` : '', off ? `toplam süre hedeften ${off > 0 ? lenText(off) + ' uzun' : lenText(-off) + ' kısa'}` : ''].filter(Boolean).join('; ')}.</span><button class="btn sm primary" id="fitAll">Sığdır</button></div>` : ''}
+    <div class="cutbar" aria-label="Kurgu">${p.scenes.map((c, i) => `<a href="#sc${i}" style="flex:${Math.max(.5, c.t1 - c.t0)}" title="${i + 1}. sahne, ${tcode(c.t0)}-${tcode(c.t1)}"><span>${i + 1}</span></a>`).join('')}</div>
+    <div class="cut-scale"><span>0:00</span><span>${tcode(total / 2)}</span><span>${tcode(total)}</span></div>
+    <div class="sheet-page">${p.scenes.map((c, i) => `<section class="scene" id="sc${i}">
+      <header><span class="sn">${i + 1}</span><span class="tc">${tcode(c.t0)}-${tcode(c.t1)}</span>
+        <span class="dur"><button class="nudge sm" data-sd="-1" data-i="${i}" aria-label="Kısalt">−</button><b>${Math.round((c.t1 - c.t0) * 10) / 10} sn</b><button class="nudge sm" data-sd="1" data-i="${i}" aria-label="Uzat">+</button></span>
+        ${s.voice !== 'none' ? `<span class="fit" id="fit${i}">${fitChip(c)}</span>` : '<span style="flex:1"></span>'}
+        <button class="sc-x" data-del="${i}" title="Sahneyi sil" aria-label="Sahneyi sil">${icon('x')}</button></header>
+      <textarea class="sc-shot auto" data-f="shot" data-i="${i}" rows="1" aria-label="Görüntü">${esc(c.shot)}</textarea>
+      ${c.text || s.voice !== 'none' ? `<div class="sc-cue">${s.voice !== 'none' ? 'Anlatım' : 'Ekran yazısı'}</div><textarea class="sc-text auto" data-f="text" data-i="${i}" rows="1" placeholder="Bu sahnede söz yok" aria-label="Metin">${esc(c.text)}</textarea>` : ''}
+      <div class="sc-sound">${icon('music')}<input class="bare-in" data-f="sound" data-i="${i}" value="${esc(c.sound)}" aria-label="Ses"></div>
+    </section>`).join('')}</div>
+    <div class="sec-h"><h3>Senaryoya not</h3><small>Claude notuna göre yeniden yazar; dokunmadığın yerler kalır</small></div>
+    <div class="group"><div class="item note-row"><input class="field bare" id="pNote" placeholder="Örn. açılış daha sessiz olsun, son sahne gece geçsin"><button class="btn" id="rewrite">Yeniden yaz</button></div></div>
+  </div>`;
+  $('#body').scrollTop = y;
+  $('#foot').innerHTML = `<div class="foot-in"><div class="meta" id="estMeta">${estText()}</div><button class="btn lg" id="back">Geri</button><button class="btn lg primary" id="go">Üretime başla</button></div>`;
+  bindFlow();
+  const grow = t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
+  $$('textarea.auto').forEach(t => { grow(t); t.addEventListener('input', () => grow(t)); });
+  $('#pTitle').oninput = e => { p.title = e.target.value; saveFlow(); };
+  $('#pLog').oninput = e => { p.logline = e.target.value; saveFlow(); };
+  $('#pLook').oninput = e => { p.look = e.target.value; saveFlow(); };
+  $$('[data-f]').forEach(t => t.oninput = () => { const c = p.scenes[+t.dataset.i]; c[t.dataset.f] = t.value; saveFlow(); const f = $('#fit' + t.dataset.i); if (f) f.innerHTML = fitChip(c); });
+  $$('[data-sd]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.i, c = p.scenes[i], d = +b.dataset.sd; if (c.t1 - c.t0 + d < 1) return;
+    c.t1 += d; for (const x of p.scenes.slice(i + 1)) { x.t0 += d; x.t1 += d; }
+    saveFlow(); renderPlan();
+  });
+  if ($('#fitAll')) $('#fitAll').onclick = () => writePlan(`Taşan sahnelerin metnini kısalt ya da sahne sürelerini metne göre yeniden dağıt; toplam süre tam ${s.seconds} saniye olsun. Saniyede en fazla ${wps} kelime. Geri kalan her şeyi koru.`);
+  $$('[data-del]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.del, c = p.scenes[i], d = c.t1 - c.t0; p.scenes.splice(i, 1);
+    if (!p.scenes.length) return writePlan();
+    if (i > 0) p.scenes[i - 1].t1 += d; else p.scenes[0].t0 = 0;
+    let t = 0; for (const x of p.scenes) { const len = x.t1 - x.t0; x.t0 = t; x.t1 = t + len; t = x.t1; }
+    saveFlow(); renderPlan();
+  });
+  $('#rewrite').onclick = () => writePlan($('#pNote').value.trim());
+  $('#pNote').onkeydown = e => { if (e.key === 'Enter') writePlan(e.target.value.trim()); };
+  $('#back').onclick = () => S.q?.questions?.length ? (go('questions'), renderQuestions()) : renderNew();
+  $('#go').onclick = start;
+}
+async function startClone() {
+  if (!S.refVideo) return;
+  try {
+    const remix = S.settings.cloneMode === 'remix';
+    if (remix && !S.idea.trim()) { toast('Yeni videonun konusunu yaz'); return $('#idea').focus(); }
+    const job = await api('/api/jobs', { kind: 'clone', title: remix ? titleFrom(S.idea) : base(S.refVideo.path).replace(/\.[^.]+$/, '').slice(0, 50) + ' klon', idea: S.idea.trim(), script: remix ? S.script.trim() : '', notes: S.notes, settings: S.settings, refVideo: S.refVideo.path });
+    S.idea = ''; S.script = ''; S.notes = ''; S.refVideo = null; saveDraft();
+    await loadJobs(); openJob(job.id);
+  } catch (e) { toast(e.message); }
+}
+// "90", "1:30", "1 dk 30 sn", "2dk", "45 sn", "1.5 dk" -> seconds
+function parseLen(t) {
+  t = String(t).toLowerCase().replace(',', '.').trim(); if (!t) return 0;
+  const m = t.match(/^(\d+):(\d{1,2})$/); if (m) return +m[1] * 60 + +m[2];
+  if (/^\d+(\.\d+)?$/.test(t)) return Math.round(+t);
+  let sec = 0, hit = false;
+  for (const [, n, u] of t.matchAll(/(\d+(?:\.\d+)?)\s*(saat|sa|h|dakika|dak|dk|min|m|saniye|san|sn|s)(?![a-zçğıöşü])/g)) { hit = true; sec += +n * (/^(sa|saat|h)$/.test(u) ? 3600 : /^(dk|dak|dakika|m|min)$/.test(u) ? 60 : 1); }
+  return hit ? Math.round(sec) : 0;
+}
+// "3 saatlik bir film", "5 dakikalık", "90 saniye" -> seconds the user wrote into the idea
+function lenInText(t) {
+  const m = String(t || '').toLowerCase().replace(',', '.').match(/(\d+(?:\.\d+)?|yarım|bir|iki|üç|dört|beş|on)\s*(saatlik|saat|dakikalık|dakika|dk|saniyelik|saniye|sn)\b/);
+  if (!m) return 0;
+  const n = { yarım: .5, bir: 1, iki: 2, üç: 3, dört: 4, beş: 5, on: 10 }[m[1]] ?? +m[1];
+  return Math.round(n * (/^saat/.test(m[2]) ? 3600 : /^(dakika|dk)/.test(m[2]) ? 60 : 1));
+}
+function durHint() {
+  const el = $('#durHint'); if (!el) return;
+  const want = lenInText(S.idea), cap = Math.max(5, Math.min(1800, want));
+  if (!want || cap === S.settings.seconds) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = `${icon('clock')}<span>Metinde ${want >= 3600 ? +(want / 3600).toFixed(1) + " saat" : lenText(want)} geçiyor, süre ayarı ${lenText(S.settings.seconds)}. Video ayardaki süreyle yapılır.${want > 1800 ? ' En uzun 30 dk yapılabilir.' : ''}</span><button class="btn sm" id="useLen">Süreyi ${lenText(cap)} yap</button>`;
+  $('#useLen').onclick = () => { S.settings.seconds = cap; S.settings.mode = cap > 180 ? 'film' : 'quick'; saveDraft(); keepScroll(renderNew); updateEstimate(); };
+}
+const VIDEO_RE = /\.(mp4|mov|webm|m4v|mkv)$/i, MEDIA_RE = /\.(png|jpe?g|webp|gif|heic|svg|mp4|mov|webm|m4v)$/i;
+const trayItems = () => [...(S.refImages || []).map((r, i) => ({ kind: 'img', i, path: r.path })), ...(S.appVideos || []).map((r, i) => ({ kind: 'vid', i, path: r.path }))];
+function trayCount() { const a = (S.refImages || []).length, b = (S.appVideos || []).length; return [a && `${a} görüntü`, b && `${b} kayıt`].filter(Boolean).join(', '); }
+function addMedia(paths) {
+  S.refImages ||= []; S.appVideos ||= [];
+  const have = new Set(trayItems().map(t => t.path));
+  for (const p of paths) {
+    if (have.has(p)) continue;
+    if (VIDEO_RE.test(p)) { if (S.appVideos.length < 8) S.appVideos.push({ path: p }); }
+    else if (S.refImages.length < 12) S.refImages.push({ path: p });
+  }
+  keepScroll(renderNew);
+}
+function fitChip(c) {
+  const w = words(c.text || ''), cap = Math.floor((c.t1 - c.t0) * WPS());
+  if (!w) return '<span class="fc">söz yok</span>';
+  return w > cap ? `<span class="fc over">${w - cap} kelime fazla</span>` : `<span class="fc ok">${w}/${cap} kelime, sığıyor</span>`;
+}
+function saveFlow() { try { sessionStorage.setItem('cs.flow', JSON.stringify({ q: S.q, answers: S.answers, own: S.own, plan: S.plan })); } catch {} }
+async function start() {
+  try {
+    const job = await api('/api/jobs', { ...briefBody(), title: S.plan?.title || S.q?.title || titleFrom(S.idea), questions: S.q?.questions || [], answers: S.answers, plan: S.plan, musicFile: S.musicFile?.path });
+    S.idea = ''; S.notes = ''; S.script = ''; S.refVideo = S.refFolder = S.musicFile = null; S.refImages = []; S.appVideos = []; S.q = null; S.plan = null; S.answers = {}; saveDraft(); saveFlow();
+    await loadJobs(); openJob(job.id);
+  } catch (e) { toast(e.message); }
+}
+
+// ---------- settings ----------
+function renderSettings() {
+  if (S.view !== 'settings') go('settings');
+  setChrome('');
+  const st = S.status || { keys: {}, tools: {} }, k = st.keys || {}, t = st.tools || {};
+  const ok = (v, yes = '') => v ? `<span class="ok-ic">${icon('check')}${yes}</span>` : '<span class="no-ic">Yok</span>';
+  $('#body').innerHTML = `<div class="page">
+    <div class="head-row"><h2 class="large">Ayarlar</h2></div>
+    <div class="section-title">Kaynaklar</div>
+    <div class="group">
+      ${item('Claude Code', ok(st.claude, 'Bağlı'), st.claude ? `Filmi bu bilgisayardaki Claude Code üretir (${esc(st.claude)}); ayrı model anahtarı gerekmez` : 'Kurulu değil: claude.ai/code')}
+      ${KEYS.map(([name, label, desc]) => item(label, k[name]
+        ? `${ok(true, 'Bağlı')}<button class="btn" data-key="${name}">Değiştir</button><button class="btn danger" data-rm="${name}">Kaldır</button>`
+        : `<button class="btn" data-key="${name}">Bağla</button>`, esc(desc))).join('')}
+    </div>
+    <p class="footnote">Anahtarlar bu bilgisayarda cinecode'un yerel deposunda (~/.cinecode/keys.env) saklanır. Ekranda gösterilmez, sohbete yazılmaz; yalnız ses ve stok araçları kullanır.</p>
+    <div class="section-title">Kayıt yeri</div>
+    <div class="group">
+      ${item(`<span class="path">${esc(base(st.filmsRoot || ''))}</span><small class="path" title="${esc(st.filmsRoot || '')}">${esc(st.filmsRoot || '')}</small>`, '<button class="btn" id="openRoot">Göster</button><button class="btn" id="chRoot">Değiştir</button>')}
+    </div>
+    <p class="footnote">Her proje bu klasörde kendi klasörüne kaydedilir; düzenlemeler projenin edits klasörüne gider.</p>
+    <div class="section-title">Araçlar</div>
+    <div class="group">
+      ${item('cinecode', ok(st.kit), 'Filmi üreten skill')}
+      ${item('HyperFrames', ok(st.hyperframes), st.hyperframes ? 'Videoyu düzenler: altyazı, başlık, geçiş, müzik' : 'Düzenleme için: claude plugin install hyperframes@hyperframes')}
+      ${item('Node.js', ok(t.node))}${item('Python 3', ok(t.python))}${item('ffmpeg', ok(t.ffmpeg))}
+      ${item('Google Chrome', ok(t.chrome), 'Kareleri çizer; kendi ayrı profilini kullanır')}
+    </div>
+    <div class="section-title">Hakkında</div>
+    <div class="group">
+      ${item('cinecode', '<button class="btn" data-link="https://github.com/sarpstar/cinecode">GitHub</button><button class="btn" data-link="https://x.com/sarpstar">@sarpstar</button>', 'Filmi yazan, kuran ve render eden açık kaynak skill. Sarp Yıldız\'ın eseri, MIT lisansı')}
+      ${item('HyperFrames', '<button class="btn" data-link="https://github.com/heygen-com/hyperframes">GitHub</button>', 'Düzenleme katmanı. HeyGen, Apache-2.0')}
+      ${item('Cinecode Studio', '<button class="btn" data-link="https://github.com/hsynozdamar-byte/cinecode-studio">GitHub</button><button class="btn" data-link="https://x.com/designvibed">@designvibed</button>', 'Hüseyin Özdamar\'ın paneli, MIT lisansı')}
+      ${st.hasExample ? item('Örnek proje', `<button class="btn" id="exToggle">${st.hideExample ? 'Göster' : 'Gizle'}</button>`, 'Üretilenler\'de duran Kâğıt Gemi örneği') : ''}
+    </div>
+    <p class="footnote">Bu panel cinecode'a dokunmaz; Sarp'ın yaptığı aracı biraz daha kullanışlı hale getirmeye çalıştım. İyilik iyidir.</p>
+  </div>`;
+  $$('[data-key]').forEach(b => b.onclick = () => keySheet(b.dataset.key));
+  $$('[data-rm]').forEach(b => b.onclick = async () => { await api('/api/keys/remove', { name: b.dataset.rm }); toast('Anahtar kaldırıldı'); refreshStatus(); });
+  $$('[data-link]').forEach(b => b.onclick = () => api('/api/open-link', { url: b.dataset.link }));
+  if ($('#exToggle')) $('#exToggle').onclick = async () => { await api('/api/settings', { hideExample: !st.hideExample }); await refreshStatus(); await loadJobs(); renderSettings(); };
+  $('#chRoot').onclick = changeRoot; $('#openRoot').onclick = () => api('/api/open-root', {});
+}
+function keySheet(name) {
+  const [, label, desc] = KEYS.find(x => x[0] === name);
+  const bg = document.createElement('div'); bg.className = 'sheet-bg';
+  bg.innerHTML = `<form class="sheet" role="dialog" aria-label="${label} anahtarı"><h2>${label} anahtarını bağla</h2><p>${esc(desc)}</p>
+    <input class="field" type="password" autocomplete="off" spellcheck="false" placeholder="Anahtarı yapıştır" aria-label="${label} anahtarı">
+    <div class="acts"><button type="button" class="btn lg" data-c>Vazgeç</button><button class="btn lg primary">Kaydet</button></div></form>`;
+  document.body.append(bg);
+  const inp = bg.querySelector('input'); inp.focus();
+  const close = () => bg.remove();
+  bg.onclick = e => { if (e.target === bg) close(); };
+  bg.querySelector('[data-c]').onclick = close;
+  bg.onkeydown = e => { if (e.key === 'Escape') close(); };
+  bg.querySelector('form').onsubmit = async e => {
+    e.preventDefault(); if (!inp.value.trim()) return inp.focus();
+    try { await api('/api/keys/set', { name, value: inp.value.trim() }); close(); toast(`${label} bağlandı`); refreshStatus(); } catch (err) { toast(err.message); }
+  };
+}
+
+// ---------- project (job) ----------
+function closeStream() { if (es) { es.close(); es = null; } clearInterval(clock); }
+function openJob(id) {
+  go('job');
+  S.events = []; S.out = { videos: [], stills: [], state: {} }; S.pick = null; S.ops = []; S.dockMode = 'revise';
+  S.job = S.jobs.find(j => j.id === id) || { id, title: '', status: 'queued' };
+  renderSide(); renderJob();
+  es = new EventSource(`/api/jobs/${id}/events`);
+  es.onmessage = e => {
+    const ev = JSON.parse(e.data);
+    if (ev.kind === 'outputs') { const had = S.out.videos.length; S.out = ev; if (S.out.videos.length !== had) S.pick = null; renderPlayer(); renderInspector(); if (!$('#reply')?.value) renderDock(); return; }
+    S.events.push(ev); queueLog();
+  };
+  es.addEventListener('job', e => {
+    const was = S.job.status; S.job = JSON.parse(e.data);
+    const i = S.jobs.findIndex(j => j.id === S.job.id); if (i >= 0) S.jobs[i] = S.job;
+    renderSide(); renderJobChrome(); renderInspector(); queueLog(); if (!$('#reply')?.value) renderDock();
+    if (was === 'running' && S.job.status !== 'running') loadJobs();
+  });
+  clock = setInterval(() => { const el = $('#elapsed'); if (el) el.textContent = elapsed(); const b = $('#estBar'); if (b) b.style.width = progress() + '%'; }, 1000);
+}
+function workMs() { const j = S.job; let ms = j.workMs || 0; if (j.status === 'running' && j.turnStart) ms += Date.now() - j.turnStart; return ms; }
+function elapsed() { const s = Math.floor(workMs() / 1000), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60; return `${h ? h + ':' + String(m).padStart(2, '0') : m}:${String(s % 60).padStart(2, '0')}`; }
+function progress() { const j = S.job; return j.estimate ? Math.min(95, Math.round(workMs() / 600 / j.estimate.minutes)) : 0; }
+function renderJob() {
+  $('#body').innerHTML = `<div class="job"><div class="stage" id="stage"><div class="stage-inner"><div id="playerWrap"></div><div class="log" id="log"></div></div></div><aside class="inspector" id="inspector" aria-label="Proje bilgisi"></aside></div>`;
+  renderJobChrome(); renderPlayer(); renderLog(); renderInspector(); renderDock();
+}
+function renderJobChrome() {
+  const j = S.job;
+  setChrome(j.title || 'Proje', { lined: true, acts: `<button class="btn" id="reveal">${icon('folder')}Klasörde göster</button>${j.status !== 'running' ? '<button class="btn" id="del">Listeden kaldır</button>' : ''}` });
+  $('#reveal').onclick = () => api(`/api/jobs/${j.id}/reveal`, { path: currentVideo()?.path });
+  if ($('#del')) $('#del').onclick = async () => { await api(`/api/jobs/${j.id}/delete`, {}); toast('Listeden kaldırıldı; klasör diskte duruyor'); await loadJobs(); renderLibrary(); };
+}
+// Intermediate renders live in renders/; the delivered video sits in the film folder (or edits/).
+const isRender = v => /[\\/]renders[\\/]/.test(v.path);
+const currentVideo = () => { const v = S.out.videos || []; return v.find(x => x.path === S.pick) || v.find(x => !isRender(x)) || v[0]; };
+const KIND = { final: 'Final', draft: 'Taslak', render: 'Render', edit: 'Düzenleme' };
+function renderPlayer() {
+  const w = $('#playerWrap'); if (!w) return;
+  const j = S.job, cur = currentVideo(), [rw, rh] = RATIO[j.settings?.aspect] || [16, 9];
+  const old = w.querySelector('video');
+  if (old && cur && old.dataset.p === cur.path + cur.size) return;
+  const vertical = rh > rw;
+  w.innerHTML = `<div class="player" style="aspect-ratio:${rw}/${rh};${vertical ? 'height:52vh;width:auto' : 'width:100%'}">
+    ${cur ? `<video controls preload="metadata" data-p="${esc(cur.path + cur.size)}" src="${fileUrl(cur.path)}&v=${cur.size}"></video>`
+      : `<div class="ph">${j.status === 'running' ? '<span class="spin"></span>Üretiliyor. Video hazır olunca burada oynar.' : icon('film') + 'Henüz video yok'}</div>`}</div>
+    ${cur ? `<div class="vtitle"><span class="badge ${cur.kind}">${KIND[cur.kind] || ''}</span><b>${esc(cur.name)}</b><span>${(cur.size / 1048576).toFixed(1)} MB</span></div>` : ''}`;
+}
+const PHASES = {
+  quick: [['Hazırlık', /^1\b|^1b|question|research/i], ['Plan', /^2\b|card/i], ['Kareler', /^3|still|scene/i], ['Taslak', /^4|^5|draft|revision/i], ['Final', /^6|final/i]],
+  film: [['Görüşme', /^1\b|interview/i], ['Yol haritası', /^2\b|roadmap/i], ['Senaryo', /^3\b|script/i], ['Stil karesi', /^4\b|style/i], ['Animatik', /^5\b|animatic/i], ['Taslak', /^6\b|draft/i], ['Final', /^7\b|final/i]],
+};
+function renderInspector() {
+  const el = $('#inspector'); if (!el || !S.job) return;
+  const j = S.job, s = j.settings || {}, st = S.out.state || {}, vids = S.out.videos || [];
+  const steps = PHASES[s.mode === 'film' ? 'film' : 'quick'];
+  let idx = st.phase ? steps.findIndex(([, re]) => re.test(st.phase)) : (j.status === 'running' ? 0 : -1);
+  if (vids.some(v => v.kind === 'final') || (/deliver/i.test(st.phase || '') && idx === steps.length - 1)) idx = steps.length;
+  // Not running and a video is out: the reached step is finished, nothing pulses.
+  if (j.status !== 'running' && vids.length && idx >= 0 && idx < steps.length) idx += 1;
+  const cur = currentVideo();
+  el.innerHTML = `
+    ${j.kind === 'clone' ? `<div class="section-title">Klon</div><div class="group"><div class="kv"><span>Kaynak</span><b>${esc(base(j.refVideo))}</b><span>Araç</span><b>HyperFrames</b></div></div>` : `<div class="section-title">Aşama</div>
+    <div class="group"><div class="steps">${steps.map(([l], i) => `<div class="step ${i < idx ? 'done' : i === idx && j.status === 'running' ? 'now' : ''}"><span class="mk">${i < idx ? icon('check') : ''}</span>${l}</div>`).join('')}</div>
+</div>`}
+    <div class="section-title">Bilgi</div>
+    <div class="group"><div class="kv">
+      <span>Geçen süre</span><b id="elapsed">${elapsed()}</b>
+      <span>Tahmini</span><b>${j.estimate ? fmtMin(j.estimate.minutes) : ''}</b>
+      ${j.kind === 'clone' ? '<span>Biçim</span><b>Orijinalden</b>' : `<span>Biçim</span><b>${s.aspect || ''}, ${s.res === 2160 ? '4K' : (s.res || '') + 'p'}, ${s.fps || ''} fps</b>
+      <span>Uzunluk</span><b>${lenText(s.seconds || 0)}, ${s.mode === 'film' ? 'Film' : 'Hızlı'}</b>`}
+    </div>${j.status === 'running' ? `<div class="bar"><i id="estBar" style="width:${progress()}%"></i></div><div class="info-act"><button class="btn" id="stop">${icon('x')}Üretimi durdur</button></div>` : (j.status === 'stopped' || j.status === 'error') && !j.example ? `<div class="info-act"><button class="btn primary" id="resume">${icon('play')}Kaldığı yerden devam</button>${j.kind === 'clone' ? '' : '<button class="btn" id="redo" title="Fikir ve ayarlar yeni projeye kopyalanır; süre, mod ve biçimi değiştirip yeniden başlatırsın">Ayarları değiştirip yeniden başlat</button>'}</div>` : ''}</div>
+    ${vids.length ? (() => {
+      const main = vids.filter(v => !isRender(v)), mids = vids.filter(isRender);
+      const row = (v, kind) => `<button class="item ${v === cur ? 'on' : ''}" data-v="${esc(v.path)}"><span class="badge ${kind}">${KIND[kind] || ''}</span><span class="lbl vname">${esc(v.name)}</span></button>`;
+      return `<div class="section-title">Videolar</div>
+      ${main.length ? `<div class="group vlist">${main.map(v => row(v, v.kind)).join('')}</div>` : ''}
+      ${mids.length ? `<div class="group vlist ${main.length ? 'mt' : ''}"><button class="item mids" id="midsToggle"><span class="lbl vname">Ara render'lar</span><span class="mids-n">${mids.length}</span>${icon(S.showMids ? 'x' : 'plus')}</button>${S.showMids || !main.length ? mids.map(v => row(v, 'render')).join('') : ''}</div>` : ''}`;
+    })() : ''}
+    ${S.out.stills?.length ? `<div class="section-title">Kareler</div><div class="stills">${S.out.stills.slice(0, 12).map(x => `<img src="${fileUrl(x.path)}" data-zoom loading="lazy" alt="">`).join('')}</div>` : ''}`;
+  $$('#inspector [data-v]').forEach(b => b.onclick = () => { S.pick = b.dataset.v; renderPlayer(); renderInspector(); if (S.dockMode === 'edit') renderDock(); });
+  $$('#inspector [data-zoom]').forEach(zoomable);
+  if ($('#midsToggle')) $('#midsToggle').onclick = () => { S.showMids = !S.showMids; renderInspector(); };
+  if ($('#stop')) $('#stop').onclick = () => api(`/api/jobs/${j.id}/stop`, {});
+  if ($('#resume')) $('#resume').onclick = () => post('reply', { kind: 'resume' });
+  if ($('#redo')) $('#redo').onclick = () => {
+    S.settings = { ...defaults, ...(j.settings || {}) };
+    S.idea = j.idea || ''; S.script = j.script || ''; S.notes = j.notes || '';
+    S.refVideo = j.refVideo ? { path: j.refVideo } : null; S.refFolder = j.refFolder ? { path: j.refFolder, count: 0 } : null;
+    S.musicFile = j.musicFile ? { path: j.musicFile } : null; S.refImages = (j.refImages || []).map(path => ({ path })); S.appVideos = (j.appVideos || []).map(path => ({ path }));
+    S.q = null; S.plan = null; S.answers = {}; saveDraft(); saveFlow();
+    renderNew(); updateEstimate(); setTimeout(() => { $('.len')?.scrollIntoView({ block: 'center' }); $('#lenOut')?.focus(); }, 60);
+    toast('Fikir ve ayarlar kopyalandı; süreyi değiştirip yeniden başlat');
+  };
+}
+const OPS = [['captions', 'Altyazı'], ['title', 'Başlık kartı'], ['lower', 'Alt bant'], ['logo', 'Logo'], ['endcard', 'Bitiş kartı'], ['transitions', 'Geçişler'], ['music', 'Müzik'], ['sfx', 'Ses efekti'], ['look', 'Renk'], ['reframe', 'Dikey sürüm']];
+function renderDock() {
+  const f = $('#foot'); if (!f || S.view !== 'job') return;
+  if (S.job.example) {
+    f.innerHTML = `<div class="foot-in full"><div class="example-bar"><span>${icon('film')}</span><p>Örnek proje: cinecode bu 15 saniyelik filmi soru sormadan, 17 dakikada üretti. Kopyalarsan senin projen olur; not yazıp revize edebilir, HyperFrames ile düzenleyebilirsin.</p><button class="btn" id="exNew">Yeni proje</button><button class="btn primary" id="exFork">${icon('copy')}Kopyala ve revize et</button></div></div>`;
+    $('#exNew').onclick = () => go('new');
+    $('#exFork').onclick = async () => { try { const c = await api(`/api/jobs/${S.job.id}/fork`, {}); await loadJobs(); openJob(c.id); } catch (e) { toast(e.message); } };
+    return;
+  }
+  const j = S.job, running = j.status === 'running', vids = S.out.videos || [], cur = currentVideo(), hf = S.status?.hyperframes;
+  const canFinal = !running && j.settings?.deliver !== 'final' && vids.length && !vids.some(v => v.kind === 'final');
+  if (!vids.length && S.dockMode === 'edit') S.dockMode = 'revise';
+  const edit = S.dockMode === 'edit';
+  const hint = running ? (j.turnKind === 'edit' ? 'HyperFrames düzenliyor' : 'cinecode üretiyor') : edit ? (hf ? `Düzenlenecek video: ${cur?.name || ''}` : 'HyperFrames kurulu değil (Ayarlar › Araçlar)') : vids.length ? 'Revize: notunla film yeniden kurulur. Düzenle: bitmiş videoya katman eklenir.' : 'Soru gelirse cevabını, yön değiştirmek istersen notunu yaz';
+  f.innerHTML = `<div class="foot-in full"><div class="dock">
+    <div class="dock-top">
+      ${vids.length ? `<div class="seg" role="tablist"><button role="tab" aria-selected="${!edit}" class="${!edit ? 'on' : ''}" data-mode="revise" title="Filmi cinecode yeniden kurar: hikâye, sahne, ses, süre">Revize</button><button role="tab" aria-selected="${edit}" class="${edit ? 'on' : ''}" data-mode="edit" title="Bitmiş videonun üstüne HyperFrames ile altyazı, başlık, müzik, logo ekler">Düzenle</button></div>` : ''}
+      <span class="meta">${esc(hint)}</span>
+    </div>
+    ${edit && !running ? `<div class="ops">${OPS.map(([k, l]) => `<button class="chip ${S.ops.includes(k) ? 'on' : ''}" data-op="${k}" aria-pressed="${S.ops.includes(k)}">${l}</button>`).join('')}</div>` : ''}
+    <div class="dock-row"><textarea id="reply" rows="1" ${running ? 'disabled' : ''} aria-label="Not" placeholder="${running ? 'Üretim bitince not yazabilirsin' : edit ? 'Ne değişsin? Örnek: başlık beyaz ve büyük olsun, altyazı alt kenara' : 'Revize notu ya da sorulana cevabın'}"></textarea>
+      <button class="btn lg primary" id="send" ${running ? 'disabled' : ''}>${edit ? 'Düzenle' : 'Gönder'}</button></div>
+  </div></div>`;
+  $$('[data-mode]').forEach(b => b.onclick = () => { if (b.disabled) return; S.dockMode = b.dataset.mode; renderDock(); });
+  $$('[data-op]').forEach(b => b.onclick = () => { const k = b.dataset.op; S.ops = S.ops.includes(k) ? S.ops.filter(x => x !== k) : [...S.ops, k]; b.classList.toggle('on'); b.setAttribute('aria-pressed', S.ops.includes(k)); });
+  const ta = $('#reply');
+  ta.oninput = () => { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; };
+  ta.onkeydown = e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) $('#send')?.click(); };
+  if ($('#final')) $('#final').onclick = () => post('reply', { kind: 'final' });
+  $('#send').onclick = async () => {
+    if (running) return;
+    const text = ta.value.trim();
+    if (edit) {
+      if (!text && !S.ops.length) return ta.focus();
+      let logo = null;
+      if (S.ops.includes('logo')) { const r = await pickPath('image'); if (!r) return toast('Logo dosyası seçilmedi'); logo = r.path; }
+      if (await post('edit', { text, ops: S.ops, source: cur?.path, logo })) S.ops = [];
+    } else { if (!text) return ta.focus(); post('reply', { text }); }
+  };
+}
+async function post(act, body) { try { await api(`/api/jobs/${S.job.id}/${act}`, body); return true; } catch (e) { toast(e.message); return false; } }
+
+let logQueued = false;
+function queueLog() { if (!logQueued) { logQueued = true; setTimeout(() => { logQueued = false; renderLog(); }, 30); } }
+function md(t) {
+  let html = '', list = false;
+  for (let l of esc(t).split('\n')) {
+    l = l.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>');
+    const li = l.match(/^\s*[-*•]\s+(.*)/) || l.match(/^\s*\d+[.)]\s+(.*)/);
+    if (li) { if (!list) { html += '<ul>'; list = true; } html += `<li>${li[1]}</li>`; continue; }
+    if (list) { html += '</ul>'; list = false; }
+    if (l.trim()) html += `<p>${l.replace(/^#+\s*/, '')}</p>`;
+  }
+  if (list) html += '</ul>';
+  const media = [...new Set(t.match(/(?:\/(?:Users|home|private|tmp)\/|[A-Z]:\\)[^\n`"'<>|*]+?\.(?:png|jpe?g|webp|mp4|mov)\b/gi) || [])].slice(0, 4);
+  for (const p of media) html += /\.(mp4|mov)$/i.test(p) ? `<video src="${fileUrl(p)}" controls preload="metadata"></video>` : `<img src="${fileUrl(p)}" data-zoom loading="lazy" alt="">`;
+  return html;
+}
+function cleanTool(t) {
+  let x = t.replace(/^cd\s+("[^"]*"|\S+)\s*&&\s*/, '');
+  const root = S.status?.filmsRoot; if (root) x = x.split(root + '/').join('').split(root).join('');
+  x = x.replace(/\/Users\/[^/\s"]+|[A-Z]:\\Users\\[^\\\s"]+/g, '~').replace(/~[\\/]\.claude[\\/]skills[\\/]cinecode[\\/]/g, '');
+  return /^(python3?|py|node|npx|ffmpeg|ffprobe|sed|grep|cat|ls|wc|head|tail|git)\b/.test(x) ? 'Komut: ' + x : x;
+}
+function renderLog() {
+  const log = $('#log'), stage = $('#stage'); if (!log || !stage) return;
+  const near = stage.scrollHeight - stage.scrollTop - stage.clientHeight < 160;
+  let html = '<h4>Etkinlik</h4>', tools = [];
+  const flush = () => { if (tools.length) { html += `<div class="tools ${tools.length > 4 ? 'more' : ''}">${tools.length > 4 ? `<button class="toggle">${tools.length - 4} adım daha göster</button>` : ''}${tools.map(t => `<div class="tool"><span>${esc(cleanTool(t))}</span></div>`).join('')}</div>`; tools = []; } };
+  const texts = S.events.filter(e => e.kind === 'text');
+  for (const ev of S.events) {
+    if (ev.kind === 'tool') { tools.push(ev.text); continue; }
+    flush();
+    if (ev.kind === 'user') html += `<div class="msg user">${md(ev.text)}</div>`;
+    else if (ev.kind === 'error') html += `<div class="msg err">${esc(ev.text)}</div>`;
+    else if (ev.kind === 'result') { if (!texts.some(x => x.text.trim() === ev.text.trim())) html += `<div class="msg">${md(ev.text)}</div>`; }
+    else html += `<div class="msg">${md(ev.text)}</div>`;
+  }
+  flush();
+  if (S.job.status === 'running') html += `<div class="working"><span class="spin"></span>Çalışıyor</div>`;
+  else if (S.job.note) html += `<div class="working">${esc(S.job.note)}</div>`;
+  log.innerHTML = html;
+  $$('#log .toggle').forEach(b => b.onclick = () => { b.parentElement.classList.remove('more'); b.remove(); });
+  $$('#log [data-zoom]').forEach(zoomable);
+  if (near) stage.scrollTop = stage.scrollHeight;
+}
+function zoomable(img) { img.onclick = () => { const d = document.createElement('div'); d.className = 'lightbox'; d.innerHTML = `<img src="${img.src}" alt="">`; d.onclick = () => d.remove(); document.body.append(d); }; }
+
+// ---------- boot ----------
+$('#navNew').onclick = renderNew;
+$('#navLib').onclick = () => { go('library'); renderLibrary(); };
+$('#navSettings').onclick = () => { go('settings'); renderSettings(); refreshStatus(); };
+(async () => {
+  await Promise.all([loadJobs(), refreshStatus()]);
+  let back = null; try { back = JSON.parse(sessionStorage.getItem('cs.view')); sessionStorage.removeItem('cs.view'); const f = JSON.parse(sessionStorage.getItem('cs.flow')); if (f) Object.assign(S, { q: f.q, answers: f.answers || {}, own: f.own || {}, plan: f.plan }); } catch {}
+  if (back) {
+    if (back.view === 'job' && S.jobs.some(j => j.id === back.id)) openJob(back.id);
+    else if (back.view === 'plan' && S.plan) { go('plan'); renderPlan(); }
+    else if (back.view === 'questions' && S.q) { go('questions'); renderQuestions(); }
+    else if (back.view === 'library') { go('library'); renderLibrary(); }
+    else if (back.view === 'settings') { go('settings'); renderSettings(); }
+    else renderNew();
+    if (back.y) requestAnimationFrame(() => { $('#body').scrollTop = back.y; });
+    return;
+  }
+  const live = S.jobs.find(j => j.status === 'running');
+  if (live) openJob(live.id); else if (S.jobs.length) { go('library'); renderLibrary(); } else renderNew();
+})();
+// Live reload: when index.html changes on disk the panel reloads in place, keeping the view.
+(() => { let first = null; const ev = new EventSource('/api/live'); ev.onmessage = e => {
+  if (first === null) { first = e.data; return; }
+  if (e.data !== first) { try { sessionStorage.setItem('cs.view', JSON.stringify({ view: S.view, id: S.job?.id, y: $('#body').scrollTop })); } catch {} location.reload(); }
+}; })();
+setInterval(loadJobs, 30000);
+</script>
+</body>
+</html>
